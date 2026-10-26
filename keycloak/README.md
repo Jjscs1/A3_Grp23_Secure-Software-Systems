@@ -184,6 +184,9 @@ Do not add the helper role to the realm's default roles.
 The helper role selects the login check. It is not intended
 to grant access to application features.
 
+Staff and voters currently use the same `evp` realm.
+The staff check is selected by role, not by a separate staff realm.
+
 ## 5. Start PostgreSQL and the backend
 
 Follow the repository root README section "Running it for the demo"
@@ -462,7 +465,7 @@ The build reported a browser compatibility warning about the
 `crypto` import in the blind RSA dependency. A successful build
 alone does not prove that the full browser voting flow works.
 
-The automated tests do not replace the manual Windows Hello checks.
+The automated tests do not replace the manual WebAuthn checks.
 
 ## 10. Manual API checks
 
@@ -512,6 +515,7 @@ The following checks were completed on the local setup:
 | Account | Role | Result |
 | --- | --- | --- |
 | `delegate1` | `DELEGATE` | Windows Hello was requested and sign-in succeeded |
+| `delegate2` | `DELEGATE` | A virtual passkey was registered and a later sign-in succeeded using it |
 | `officer1` | `AEC_OFFICER` | Passkey registration was requested, and a later sign-in required Windows Hello |
 | `admin-test` | `ADMIN` | Passkey registration was requested, and a later sign-in required Windows Hello |
 | `voter1` | `VOTER` | Sign-in succeeded with the password without a passkey prompt |
@@ -525,11 +529,114 @@ Retrying and completing the check allowed sign-in.
 The `delegate1` and `voter1` checks were repeated after the
 condition was changed to use `REQUIRE_WEBAUTHN`.
 
-These results show the tested login behaviour for these accounts.
-They do not prove that every SEC-02 requirement is complete.
+The following `delegate2` checks were performed on
+27 October 2026, using the main local Keycloak instance
+at port 8081 and the frontend at port 5173.
 
-The WebAuthn checks for `delegate2` and `delegate3` have not
-been recorded as completed.
+### Virtual authenticator sign-in
+
+We used Chrome DevTools WebAuthn to create a virtual authenticator
+with these settings:
+
+- Protocol: `ctap2`
+- Transport: `usb`
+- Supports resident keys: enabled
+- Supports user verification: enabled
+
+We registered a passkey for `delegate2` with the label
+`delegate2-virtual-test`.
+
+We then signed out and started another sign-in.
+After entering the username and password, Keycloak showed
+Passkey login.
+
+Selecting "Sign in with Passkey" completed sign-in.
+The application showed `Signed in as: delegate2`.
+The virtual credential's signature count increased from 1 to 3.
+
+Result: sign-in using a registered virtual authenticator succeeded.
+
+### Password without completed WebAuthn
+
+We signed out and opened the application in a fresh Chrome
+Incognito window, without enabling virtual authenticators there.
+
+After entering the correct `delegate2` password, Keycloak
+still required the registered passkey.
+
+We started the passkey check and cancelled it.
+Keycloak showed Passkey Error, and sign-in did not complete.
+
+Result: the correct password alone did not complete this
+staff sign-in attempt.
+
+### OTP did not provide a replacement for WebAuthn
+
+For this test only, we added Configure OTP as a required
+action for `delegate2`.
+
+We signed in using the registered passkey first, then completed
+OTP setup using an authenticator app.
+
+The Keycloak Credentials page showed all three:
+
+- Password
+- Webauthn
+- Otp
+
+We signed out and started another sign-in in a fresh
+Incognito window.
+
+After the correct password, Keycloak still showed Passkey login.
+There was no option on that page to use an OTP code instead.
+
+We cancelled the passkey check.
+Keycloak showed Passkey Error, and sign-in did not complete.
+
+Result: having OTP registered did not provide a way to replace
+WebAuthn in the browser login flow we tested.
+
+We did not submit a TOTP code during this login attempt because
+the flow did not offer an OTP form. This was a manual check
+that OTP was not available as a fallback, not a direct test
+of a submitted TOTP code being rejected.
+
+Configure OTP was used to prepare the test account.
+We did not enable OTP Form in the staff authentication flow.
+
+### Test setup note
+
+An earlier attempt selected an empty virtual authenticator
+while other virtual authenticators were still present.
+
+Sign-in succeeded, but an existing credential's signature
+count increased from 3 to 4. The empty authenticator remained
+empty.
+
+We did not count that attempt as a successful rejection test.
+We repeated the cancellation checks in fresh Incognito windows
+without enabling the virtual authenticator environment there.
+
+### Evidence
+
+Screenshots were captured for:
+
+- Successful virtual authenticator sign-in and the signature count.
+- The passkey prompt after entering the correct password.
+- Passkey Error after cancelling verification.
+- The passkey prompt after OTP was registered.
+- Passkey Error after cancellation with OTP registered.
+- The account's Password, Webauthn, and Otp credential list.
+
+Do not include passwords, OTP setup QR codes, OTP secrets,
+private keys, or tokens in screenshots committed to Git.
+
+These results describe the tested accounts and browser flow.
+They do not prove that every SEC-02 requirement or every
+authentication route has been checked.
+
+The WebAuthn check for `delegate3` has not been recorded
+as completed.
 
 ## 12. Manual PKCE test
 
@@ -586,11 +693,18 @@ Its discovery endpoint returned the expected issuer.
 The updated export containing the staff MFA settings was also
 imported successfully into a fresh Keycloak 26.8.1 test container.
 The discovery endpoint returned:
+
+```text
 http://localhost:8082/realms/evp
+```
 
 This checked the import and discovery endpoint.
-The Windows Hello login tests were performed on the main
-local Keycloak instance at port 8081.
+The manual login tests were performed on the main local
+Keycloak instance at port 8081.
+
+The export does not include the virtual passkey or OTP
+credential added to `delegate2` during testing.
+
 ## 14. Work still needed
 
 This is a local demo using Keycloak's development mode and
@@ -606,7 +720,9 @@ or their passkeys.
 Work still needed includes:
 
 - Finish checking all SEC-01 requirements.
-- Complete the remaining SEC-02 checks and document their results.
+- Review the remaining SEC-02 acceptance requirements and test coverage.
+- Confirm how the SEC-02 "staff realm" wording applies to our shared
+  `evp` realm with role-based staff checks.
 - Finish the full role and permission rules for SEC-03.
 - Add DPoP.
 - Complete the session security requirements.
