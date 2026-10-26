@@ -358,7 +358,6 @@ The JSON file is a partial configuration export.
 It is not a full backup and does not include user accounts.
 
 The following work is still needed:
-- Test that an incorrect PKCE code verifier is rejected.
 - Finish checking all SEC01 requirements.
 - Add role-based access rules.
 - Add staff MFA.
@@ -371,3 +370,32 @@ SEC01 is not complete yet.
 CSRF protection is currently disabled because the API uses
 bearer tokens only. This must be reviewed if cookie-based
 authentication is added.
+
+## 11. Manual PKCE test
+
+Test date: 22 October 2026.
+
+We started a sign-in attempt and changed one character in its
+saved `code_verifier` in browser session storage. We kept the
+same sign-in request and completed the login.
+
+Keycloak rejected the token request with HTTP 400:
+
+```json
+{
+  "error": "invalid_grant",
+  "error_description": "PKCE verification failed: Code mismatch"
+}
+```
+
+The frontend showed "Sign-in could not be completed".
+
+We then started a new sign-in attempt without changing anything.
+Sign-in worked, and `/api/me` returned HTTP 200 with the test
+user's ID and username.
+
+Result: the incorrect PKCE verifier was rejected, and a new
+normal sign-in still worked.
+
+This was a manual test. The automated test counts remain
+12 frontend tests and 11 backend tests.
