@@ -1,71 +1,84 @@
-# Keycloak Local Development Setup
+# Keycloak Local Setup
 
-This directory contains the `evp` realm configuration for the EVP prototype.
+This guide explains how to run and test the login feature on your computer.
+
+The project uses:
+- Keycloak to manage user sign-in.
+- React for the frontend.
+- Spring Boot for the backend.
+
+The `evp-realm.json` file contains the Keycloak settings for this project.
 
 ## Requirements
 
-- Docker Desktop running with Linux containers.
-- Java 21 installed.
-- Node.js and npm installed.
-- This repository cloned locally.
+Before starting, install:
+- Docker Desktop with Linux containers.
+- Java 21.
+- Node.js and npm.
 
-Run the commands below in PowerShell. Start from the repository root unless otherwise stated.
+You also need a local copy of this repository.
 
-## 1. Start Keycloak on a new local setup
+Use PowerShell for the commands below.
+The repository root means the main project folder that contains
+`frontend`, `backend`, and `keycloak`.
 
-Choose a local administrator password when prompted.
-Do not commit passwords to Git.
+## 1. Start Keycloak
+
+For a new setup, open PowerShell at the repository root.
+
+Choose a local admin password:
 
 ```powershell
 $adminCredential = Get-Credential -UserName admin -Message "Choose a local Keycloak admin password"
 $env:KC_BOOTSTRAP_ADMIN_PASSWORD = $adminCredential.GetNetworkCredential().Password
 ```
 
-Start Keycloak from the repository root:
+Create and start the Keycloak container:
 
 ```powershell
 docker run -d --name evp-keycloak -p 127.0.0.1:8081:8080 -v evp-keycloak-data:/opt/keycloak/data --mount "type=bind,source=$($PWD.Path)\keycloak,target=/opt/keycloak/data/import,readonly" -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD quay.io/keycloak/keycloak:26.8.1 start-dev --import-realm
 ```
 
-Clear the password variable from the current PowerShell session:
+Remove the password variables from this PowerShell window:
 
 ```powershell
 Remove-Item Env:KC_BOOTSTRAP_ADMIN_PASSWORD
 Remove-Variable adminCredential
 ```
 
-The bootstrap password remains part of the container configuration.
-Use a password dedicated to this local development environment.
+The password still exists in the Docker container settings.
+Use a password only for this local demo. Do not put passwords in Git.
 
-Check startup:
+Check the startup messages:
 
 ```powershell
 docker logs --tail 60 evp-keycloak
 ```
 
-On a fresh database, the log should include:
+On a new database, these messages should appear:
 
 ```text
 Realm 'evp' imported
 Import finished successfully
 ```
 
-The named volume `evp-keycloak-data` preserves local Keycloak data.
+Docker saves the Keycloak data in `evp-keycloak-data`.
 
-Keycloak skips startup import if the realm already exists.
-Changing the JSON file does not automatically update an existing realm.
-
-If this container already exists, start it instead of repeating `docker run`:
+If the container already exists, use this command instead of
+creating it again:
 
 ```powershell
 docker start evp-keycloak
 ```
 
+Keycloak does not import the JSON again if the `evp` realm already
+exists. Editing the JSON does not change an existing realm.
+
 ## 2. Create a test user
 
-Open http://localhost:8081/admin/ and sign in with the administrator credentials chosen above.
+Open http://localhost:8081/admin/ and sign in with your admin account.
 
-Select the `evp` realm, then open Users and create:
+Select the `evp` realm. Open Users and create this account:
 
 - Username: `voter-test`
 - Email: `voter-test@example.com`
@@ -74,13 +87,16 @@ Select the `evp` realm, then open Users and create:
 - Email verified: Off
 - Required user actions: None
 
-Under Credentials, set a local test password.
-Set Temporary to Off for this demo account.
+Open Credentials and set a password for this test account.
+Set Temporary to Off.
 
-Users and their passwords are not included in this realm export.
-The username does not grant the VOTER role.
+The realm export does not include users or their passwords.
+Each team member needs to create their own test user.
 
-## 3. Run the frontend
+The name `voter-test` does not automatically give the user
+the VOTER role.
+
+## 3. Start the frontend
 
 Open PowerShell at the repository root:
 
@@ -92,26 +108,24 @@ npm.cmd run dev -- --port 5173 --strictPort
 
 Keep this window open.
 
-Open http://localhost:5173 and select "Sign in with Keycloak".
+Open http://localhost:5173 and click "Sign in with Keycloak".
 
-Sign in using the test user and the password you configured.
-
-Expected result:
+Use the test account to sign in. The page should show:
 
 ```text
 Signed in as: voter-test
 ```
 
-Select "Sign out", then start sign-in again.
-Keycloak should ask for credentials again.
+Click "Sign out", then try signing in again.
+Keycloak should ask for your login details again.
 
-The frontend keeps user tokens in memory.
-Reloading the page clears its local authentication state, but does not itself end the Keycloak session.
-Use Sign out to end the session.
+Tokens are kept in memory. Refreshing the page clears the
+frontend login state, but it does not end the Keycloak session.
+Use "Sign out" to end the session.
 
-## 4. Run the backend
+## 4. Start the backend
 
-Open a separate PowerShell window at the repository root:
+Open another PowerShell window at the repository root:
 
 ```powershell
 cd backend
@@ -120,11 +134,12 @@ cd backend
 
 Keep this window open.
 
-The backend listens on http://localhost:8080.
+The backend runs at http://localhost:8080.
 
-With Keycloak and the frontend running, sign in and select "Check protected API".
+With all three services running, sign in through the frontend
+and click "Check protected API".
 
-The response should contain the authenticated user's subject and username:
+The response should look like this:
 
 ```json
 {
@@ -133,93 +148,167 @@ The response should contain the authenticated user's subject and username:
 }
 ```
 
-The frontend sends the access token in the Authorization header.
-The backend is configured to validate the RS256 signature, issuer, token timestamps, and the `evp-backend` audience.
+The subject is the user's unique ID.
 
-## Current OIDC configuration
+## 5. How token checks work
+
+The project uses two types of tokens:
+
+- ID token: tells the frontend who signed in.
+- Access token: allows the frontend to call the backend.
+
+### Frontend checks
+
+Before saving the signed-in user, the frontend checks:
+- The ID token signature.
+- The issuer: the Keycloak realm that created the token.
+- The audience: the client the token is meant for.
+- The expiry time.
+- The nonce: a random value linked to the sign-in attempt.
+- The user ID and token issue time.
+- The token lifetime and authorized party when needed.
+
+If a check fails, the frontend does not save the user.
+It also removes any previous local user.
+
+### Backend checks
+
+The frontend sends the access token in the Authorization header.
+
+The backend checks its RS256 signature, issuer, timestamps,
+and `evp-backend` audience.
+
+The current API rules are:
+- GET `/api/health` is public.
+- GET `/api/me` needs a valid access token.
+- All other requests are denied.
+- CORS allows GET requests from `http://localhost:5173`.
+
+The API uses bearer tokens and does not use a server-side
+login session.
+
+## 6. Keycloak settings
 
 - Realm: `evp`
 - Issuer: `http://localhost:8081/realms/evp`
 - Client ID: `evp-frontend`
-- Public client with Standard flow enabled
-- PKCE method: `S256`
-- Implicit flow and Direct access grants disabled
+- Client type: Public
+- Standard flow: Enabled
+- PKCE: `S256`
+- Implicit flow: Disabled
+- Direct access grants: Disabled
 - Redirect URI: `http://localhost:5173/auth/callback`
 - Post-logout redirect URI: `http://localhost:5173/`
 - Web origin: `http://localhost:5173`
 - Backend audience: `evp-backend`
 
-The realm export includes the `evp-backend-audience` mapper.
+The export includes the `evp-backend-audience` mapper.
 It adds `evp-backend` to access tokens, not ID tokens.
 
-### Updating an existing realm
+### Add the audience mapper to an older setup
 
-Startup import skips existing realms.
-
-If your realm was created before the audience mapper was added:
+Only follow these steps if your existing realm does not
+already have this mapper.
 
 1. Open Clients and select `evp-frontend`.
 2. Open Client scopes.
 3. Select `evp-frontend-dedicated`.
-4. Under Mappers, choose Configure a new mapper, or Add mapper followed by By configuration.
-5. Select Audience.
-6. Configure:
+4. Open Mappers.
+5. Choose Configure a new mapper, or Add mapper → By configuration.
+6. Select Audience.
+7. Enter these settings:
 
-   - Name: `evp-backend-audience`
-   - Included Client Audience: Leave unselected
-   - Included Custom Audience: `evp-backend`
-   - Add to ID token: Off
-   - Add to access token: On
-   - Add to lightweight access token: Off
-   - Add to token introspection: On
+| Setting | Value |
+| --- | --- |
+| Name | `evp-backend-audience` |
+| Included Client Audience | Leave unselected |
+| Included Custom Audience | `evp-backend` |
+| Add to ID token | Off |
+| Add to access token | On |
+| Add to lightweight access token | Off |
+| Add to token introspection | On |
 
-7. Save the mapper.
-8. Sign out of the frontend and sign in again to obtain a new token.
+Save the mapper. Sign out of the frontend and sign in again
+to get a new token.
 
-If the mapper already exists, check its settings instead of creating a duplicate.
+If the mapper already exists, check its settings.
+Do not create another copy.
 
-## API access rules
+## 7. Run the tests
 
-- GET `/api/health` is public.
-- GET `/api/me` requires a valid access token.
-- All other requests are denied by default.
-- CORS allows GET requests from `http://localhost:5173`.
-- The API uses stateless bearer authentication.
+### Backend tests
 
-## Run automated checks
-
-From a separate PowerShell window at the repository root, run the backend tests:
+Open PowerShell at the repository root:
 
 ```powershell
 cd backend
 .\mvnw.cmd test
 ```
 
-Eleven tests passed: one application context test, five API access tests, and five JWT validation tests.
+All 11 backend tests passed:
+- One test checks that the application starts.
+- Five tests check API access rules.
+- Five tests check access-token validation.
 
-The API tests cover:
+The API tests check public access, missing tokens, malformed
+tokens, user details, and a blocked HTTP method.
 
-- Public health access.
-- Rejection of requests without a token.
-- Rejection of a malformed token.
-- Returning the authenticated user's identity.
-- Rejection of an unapproved HTTP method for an authenticated user.
+The user-details and blocked-method tests use simulated
+authentication.
 
-The identity and method tests use simulated JWT authentication.
-They do not test cryptographic signature validation.
+The five token-validation tests use temporary RSA keys and
+signed tokens. They check:
+- A valid token is accepted.
+- A wrong signature is rejected.
+- An expired token is rejected.
+- A wrong issuer is rejected.
+- A wrong audience is rejected.
 
-To build the frontend, open PowerShell at the repository root:
+### Frontend tests
+
+Open PowerShell at the repository root:
 
 ```powershell
 cd frontend
+npm.cmd ci
+npm.cmd exec -- vitest run tests/idTokenValidation.test.ts tests/VerifiedUserManager.test.ts
+```
+
+All 12 frontend tests passed.
+
+Seven tests use signed test tokens to check:
+- A valid token is accepted.
+- A wrong signature is rejected.
+- A wrong issuer is rejected.
+- A wrong audience is rejected.
+- A wrong nonce is rejected.
+- An expired token is rejected.
+- A token without an expiry time is rejected.
+
+Five tests simulate the verification result and check
+the actual user manager and storage:
+- The user is saved after successful verification.
+- The user is not saved while verification is still running.
+- Failed verification removes a previous local user.
+- Missing nonce state is rejected.
+- A different user ID is rejected.
+
+### Build the frontend
+
+From the frontend folder:
+
+```powershell
 npm.cmd run build
 ```
 
-## Manual API checks
+The frontend build passed.
 
-Keep the backend running and execute these commands in another PowerShell window.
+## 8. Manual API checks
 
-Public health endpoint:
+Keep the backend running.
+Use another PowerShell window for these commands.
+
+Check the public endpoint:
 
 ```powershell
 curl.exe -i http://localhost:8080/api/health
@@ -227,7 +316,7 @@ curl.exe -i http://localhost:8080/api/health
 
 Expected: HTTP 200 with `{"status":"UP"}`.
 
-Protected endpoint without a token:
+Check the protected endpoint without a token:
 
 ```powershell
 curl.exe -i http://localhost:8080/api/me
@@ -235,7 +324,7 @@ curl.exe -i http://localhost:8080/api/me
 
 Expected: HTTP 401.
 
-Protected endpoint with a malformed token:
+Check it with a malformed token:
 
 ```powershell
 curl.exe -i -H "Authorization: Bearer invalid-token" http://localhost:8080/api/me
@@ -243,34 +332,42 @@ curl.exe -i -H "Authorization: Bearer invalid-token" http://localhost:8080/api/m
 
 Expected: HTTP 401.
 
-To test an authenticated request, sign in through the frontend and select "Check protected API".
+To check a valid request, sign in through the frontend
+and click "Check protected API".
 
-## Validation performed
+## 9. Checks completed
 
-- Frontend TypeScript compilation and Vite build passed.
-- Manual sign-in with the test user succeeded.
-- Manual sign-out followed by a new sign-in required credentials.
-- The initial realm export was imported into a separate, fresh Keycloak 26.8.1 container.
-- The imported realm's discovery endpoint returned the expected issuer.
-- The later audience mapper was verified in the updated export.
-- A frontend request with a Keycloak access token returned user data from `/api/me`.
-- Requests without a token or with a malformed token returned HTTP 401.
-- - All eleven backend tests passed.
-- JWT validation tests used temporary RSA keys and signed tokens through the application's security filter chain.
-- A correctly signed token was accepted.
-- Tokens with an invalid signature, expired timestamp, wrong issuer, or wrong audience were rejected with HTTP 401.
+- Sign-in with `voter-test` worked.
+- The protected API returned the user's ID and username.
+- After sign-out, signing in again required login details.
+- Missing and malformed access tokens returned HTTP 401.
+- All 11 backend tests passed.
+- All 12 frontend tests passed.
+- The frontend build passed.
+- The initial realm export was imported into a separate,
+  fresh Keycloak 26.8.1 container.
+- That realm's discovery endpoint returned the expected issuer.
+- The audience mapper was checked in the later updated export.
 
-## Scope and limitations
+## 10. Work still needed
 
-This is a local development prototype using `start-dev` and the development database.
-It is not a production deployment.
+This is a local demo using Keycloak's development mode and
+development database. It is not ready for production.
 
-The JSON is an Admin Console partial export, not a complete backup or user migration.
+The JSON file is a partial configuration export.
+It is not a full backup and does not include user accounts.
 
-Backend access-token validation has automated coverage for valid tokens, invalid signatures, expired tokens, wrong issuers, and wrong audiences. These tests do not cover frontend ID-token validation, nonce handling, or rejection of an incorrect PKCE verifier.
+The following work is still needed:
+- Test that an incorrect PKCE code verifier is rejected.
+- Finish checking all SEC01 requirements.
+- Add role-based access rules.
+- Add staff MFA.
+- Add DPoP.
+- Complete the session security requirements.
+- Add rate limiting.
 
-Full SEC01 verification, role-based authorization, staff MFA, DPoP, session hardening, and rate limiting remain unfinished.
-SEC01 is not yet complete.
+SEC01 is not complete yet.
 
-CSRF protection is currently disabled for the bearer-only API.
-This must be reviewed when cookie-based authentication is introduced.
+CSRF protection is currently disabled because the API uses
+bearer tokens only. This must be reviewed if cookie-based
+authentication is added.
