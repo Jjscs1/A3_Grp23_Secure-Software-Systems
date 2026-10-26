@@ -725,8 +725,29 @@ That login attempt did not reach the application.
 This demonstrates the tested password-only attempt did not complete.
 It does not prove that all alternative authentication routes are blocked.
 
-A separate OTP fallback check for this staff broker account
-has not been completed.
+### OTP fallback check for the staff broker account
+
+On 27 October 2026, we added Configure OTP as a required action
+for staff-broker-test in evp-staff.
+
+We completed passkey authentication, then registered OTP.
+The Credentials page confirmed Password, Webauthn, and Otp.
+
+We started another staff login in an Incognito window without
+enabling a virtual authenticator there.
+
+After the correct password, Keycloak required the registered
+passkey. It did not offer OTP as an alternative.
+
+Cancelling the passkey check showed Passkey Error.
+The login attempt did not reach the application.
+
+Result: registered OTP did not provide a fallback in the tested
+staff broker browser flow.
+
+We did not submit a TOTP code during that login attempt because
+no OTP form was offered. This was not a direct test of a submitted
+TOTP code being rejected.
 
 ### Virtual credential recovery
 
@@ -875,7 +896,7 @@ Remaining work includes:
 - Decide how existing local staff accounts move to the staff realm.
 - Ensure the intended staff authentication route cannot be bypassed.
 - Review first broker login and account-linking behaviour.
-- Complete the separate staff-realm OTP fallback checks.
+- Review other authentication routes beyond the tested staff browser flow.
 - Test the latest pair of exports on a fresh setup.
 - Finish SEC-03 role and permission coverage.
 - Add DPoP.
