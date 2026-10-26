@@ -1,0 +1,1 @@
+"""SEC-16: Correct, publicly verifiable tally."""

@@ -1,0 +1,973 @@
+[
+  {
+    "contest": "house",
+    "region": "TENN",
+    "method": "full preferential (instant run-off), distributed to two candidates",
+    "candidates": {
+      "1": "MEMPHIS",
+      "2": "NASHVILLE",
+      "3": "CHATTANOOGA",
+      "4": "KNOXVILLE"
+    },
+    "count_inputs": {
+      "candidate_ids": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "excluded": [],
+      "tiebreak_seed": 0
+    },
+    "ballots": [
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        2,
+        3,
+        4,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        3,
+        4,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ],
+      [
+        4,
+        3,
+        2,
+        1
+      ]
+    ],
+    "ballot_box": {
+      "ballot_count": 100,
+      "receipts": [
+        "010f84607383c1bc67259d03d892cf6e",
+        "033ea875c7633c425223886b18e05b4a",
+        "087009f6456c8160e3f86983d155f2eb",
+        "110e78ae9e04308f3627065ba87cb6e1",
+        "11b59831638b8ad87c6c40290d8b9cba",
+        "12e4976832ea21f9b360a6f5db4c47c9",
+        "173a63be098f0c988483c5e17d4766aa",
+        "19e4f0a3c0049f37bbdcd3664c602ceb",
+        "1ef697462659a81911e480f34d1c7825",
+        "1f682f299b7fab8699e5352429ef7319",
+        "2157a811f098a086749bf5c082cba91f",
+        "2500e6d06d61e5822e624a0bb342d73a",
+        "2a1b78ddc57dcc85cb96e097e852c763",
+        "2dd8faef0cad63517adb0b9e2792247e",
+        "2e293ee9b93e3795590719fd63dc4ab8",
+        "301d8a5e2ad02ad3073cf63010ff5afc",
+        "306614464ef9c5d4afdef325bcb88741",
+        "3088445e97af489cc059352ac42d8eb9",
+        "30e462e2ece0b0d911d6b140feb87ca6",
+        "31455b75fd9baa0e0a5d9dc494fe9fbb",
+        "33677bac189e5ec539a30d41f08fae25",
+        "343017d40fe86d4d422e44724f0873fc",
+        "35b3391ffc46a8a969de22736f621942",
+        "368b6b390101113b496ce7752dade2b6",
+        "376e467e6895a7c5259496d33fae9c9c",
+        "3965b01db1e4ebf091fa7857ecf82387",
+        "3ba0869d83087c251f030291f084599e",
+        "4343b1881bd7ee08c51b2577796fd5eb",
+        "469bed480861a967e681ffaab379c823",
+        "46dd7e3c8887f97b7dc67259d05dbc33",
+        "493e9a3117545be20b89f0060ba59be3",
+        "4b7fd910f7b31bc192df057b093b0178",
+        "5150eef323cbfcc224164599bdcf4e15",
+        "58db4f7a4b24de675ea0971d2014b11a",
+        "58f6f518775efcff5d00f609b22ed9cf",
+        "59181f74f400a8969315e6a8d0362719",
+        "59ee51fc9ab3414b21c94ae211b02f72",
+        "5a9d2d86ff5ef06b82f3f6bee911c327",
+        "5d62bf4cb9dfa90ef258d946123b2850",
+        "5ee0fb4d5a7fe0471e02b6267b4d55f2",
+        "617d7ba5d743cd04407fd4a18d88c4be",
+        "6284f6dbf4793c42bac2a5e8dc328819",
+        "63ea121141792ff5bb0c4ed6205bc030",
+        "658f1ea646f9fb86bb6673ad1edc741f",
+        "65bb299f7a1f5c0e588323306b68fe87",
+        "6c6410d5853876cf0fbe6391c1101950",
+        "6c6ffc83ca2d58f7d0fce30a027332b9",
+        "6d361d8bd0257ebb981560f2a60105d8",
+        "6d7e15277c3b0bebaa8b166a6f7e27d7",
+        "6f32cd0f777526f8166078fb95718642",
+        "709986246c64a05ee2382864e15bc24f",
+        "718b14a8c7bf6f9a7432b0f54f7bed86",
+        "731007fb2e6029f484211041808b7a81",
+        "73108215452cca4f5627f753b6def4e1",
+        "75e3da1084270b34c6849205851fdd11",
+        "7db3f068a4c055a3dddfc7efbf843e1f",
+        "8d6ccde848ff501229eb9b609df0fde8",
+        "8d774fb0eebccdc615d4ca6577bb20c7",
+        "9238d5add47550f7cb31a23bc30ebd71",
+        "95fd62d0bcab471f40298fa6ae08d0cd",
+        "965c8d54f0c4110ca78f54ec2376e597",
+        "9a57bd190e0d49f8303ab42bca6bf47a",
+        "9d57f1240e10cfd19a5c6d3ad1283656",
+        "a2697f90b7e619f6bc1ff3837a51cabc",
+        "a4ed254a0aeae1ee4296accf19ee7081",
+        "acf1b45f41e3732b545dd3dc7409eda2",
+        "ae362e209a2fca6ed63abf957ec90433",
+        "b0cfc7a7ee03b2278cbf5a46830b2c97",
+        "b7ea8cb7e7bfc7ddff26d42b29f9b11b",
+        "bca0cc2011aa15069943a8cfca15ce27",
+        "bdce27d4bbbff3e28275b65d689e526b",
+        "be95c29561284f60152b0c820706f69e",
+        "c2d2f4b1841c6107773497e00dbae60e",
+        "c4161aaefc6aab489634b527e7ee527e",
+        "ca7f12b6ae43ad4f20660ad2c928215d",
+        "caa0032ff114e802340aabb3d65aefb3",
+        "cc4447083c8c15ffa50ac339f30250ca",
+        "ced03f8a61772569eeb0f9b60db73753",
+        "cfbb8bf76fb68c84cabefa0bbfec5e1a",
+        "cfd0f75f9d11329e775e06aec87b52fb",
+        "d0348a798f0a25974ca9032663f80456",
+        "d057fd39a1bdaa71c8a335a28a8d2ee1",
+        "d2e22e53e71ab71391f8c4644f782812",
+        "dab53cf6fe9dcf10bdd292aa0c4971b2",
+        "dc71731ee168cdae5836b79831400d92",
+        "dd20777c95e10f8c302918d82d4c0571",
+        "de2fe9a95299dd9515b7219e1dfeb49f",
+        "df603d3b5f475a62d22fc7b9f77604ed",
+        "e3ca720079fe4ff856798d6ca9e7779f",
+        "e44b9cd11a7d1b46b56a6696497bac9f",
+        "e4e2cfb872b80296c4d4ffd1546bad65",
+        "e97f7980fd7ffeebdbc5d13e77937752",
+        "ec71489721ce4c385b37f60a7a9d42d3",
+        "eea8471071c293b1ca0d6c3e96456876",
+        "efc36753997dbacb14853f59528208e1",
+        "f2ee4b6e593016b212acd171b704c6d4",
+        "f4128b2ffd70b93323fa12c911336c4b",
+        "fa0ef47e7be05dd77f852ac634b36693",
+        "fcbef48cf392316fa493eb82af05c8ff",
+        "ff332f4a76014c64b9432e727e6f8e02"
+      ],
+      "receipts_merkle_root": "5be547cabc433264feabc2d35ad8efe2e055228de194009b80ec10391c6af894"
+    },
+    "winner": 4,
+    "formal": 100,
+    "rounds": [
+      {
+        "round": 1,
+        "tallies": {
+          "1": 42,
+          "2": 26,
+          "3": 15,
+          "4": 17
+        },
+        "exhausted": 0,
+        "excluded": 3,
+        "rule": "lowest votes"
+      },
+      {
+        "round": 2,
+        "tallies": {
+          "1": 42,
+          "2": 26,
+          "4": 32
+        },
+        "exhausted": 0,
+        "excluded": 2,
+        "rule": "lowest votes"
+      },
+      {
+        "round": 3,
+        "tallies": {
+          "1": 42,
+          "4": 58
+        },
+        "exhausted": 0,
+        "elected": 4,
+        "rule": "majority"
+      }
+    ],
+    "tcp": {
+      "1": 42,
+      "4": 58
+    },
+    "majority_round": 3
+  },
+  {
+    "contest": "senate",
+    "region": "VIC",
+    "method": "single transferable vote, Droop quota, weighted surplus transfer",
+    "candidates": {
+      "1": "ORANGE",
+      "2": "PEAR",
+      "3": "CHOCOLATE",
+      "4": "STRAWBERRY",
+      "5": "SWEETS"
+    },
+    "count_inputs": {
+      "candidate_ids": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "vacancies": 3,
+      "excluded": [],
+      "tiebreak_seed": 0
+    },
+    "recount_orders": [],
+    "ballots": [
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        3,
+        5
+      ],
+      [
+        3,
+        5
+      ],
+      [
+        3,
+        5
+      ],
+      [
+        3,
+        5
+      ],
+      [
+        4
+      ],
+      [
+        5
+      ]
+    ],
+    "ballot_box": {
+      "ballot_count": 20,
+      "receipts": [
+        "02c22261d6ee40c3b5b82a3a8561c370",
+        "0f8c6bd3790e08381c3ee8a2bdccd10c",
+        "101a5f9fb87688594fbf86aa7e924cbe",
+        "3ad18498390c7ede091a3d81985b6dd2",
+        "60c175236f06b8fd2f632f1cbf5fde1e",
+        "66eb979bfe5176ee2ad188c598514025",
+        "685467fa867b79eae25c956077c8d82f",
+        "6901f5f861eb8458a6f203a39964f0d2",
+        "76eff7bcdbc73933bac4247139731c1b",
+        "87b0537d37d4ad59641595f4f387f371",
+        "929f78d0971134ecf02f1ca964ba3f44",
+        "9a0fe3a1a8c2ace3a8ef717d98d5af14",
+        "a641aa9b365eba82e3cb0f2cecedbd18",
+        "b66e94fe0d5ae9ddc1f6536b756bdb60",
+        "b9d599a61e31fe17ec9db7e7db790416",
+        "d478065d89bf30561781da0af335ec9e",
+        "d7bcfa0dcc56803dd1605f075b85f36a",
+        "f3492f8231fadfdd1762d4813dfad105",
+        "fc0c1d2bcacb7b38cd4f660bb0396874",
+        "fc3e59470be0abbfa6c74288df1f1565"
+      ],
+      "receipts_merkle_root": "d402bce3553afa6bfabd3086d9a5a614fe318b14e512bb730e63879f16fcb866"
+    },
+    "vacancies": 3,
+    "formal": 20,
+    "quota": 6,
+    "elected": [
+      3,
+      1,
+      4
+    ],
+    "excluded_order": [
+      2,
+      5
+    ],
+    "manually_excluded": [],
+    "rounds": [
+      {
+        "count": 1,
+        "action": "first preferences",
+        "tallies": {
+          "1": 4.0,
+          "2": 2.0,
+          "3": 12.0,
+          "4": 1.0,
+          "5": 1.0
+        },
+        "exhausted": 0.0,
+        "elected": [
+          3
+        ]
+      },
+      {
+        "count": 2,
+        "action": "surplus transfer",
+        "tallies": {
+          "1": 4.0,
+          "2": 2.0,
+          "4": 5.0,
+          "5": 3.0
+        },
+        "exhausted": 0.0,
+        "candidate": 3,
+        "surplus": 6.0,
+        "transfer_value": 0.5
+      },
+      {
+        "count": 3,
+        "action": "exclusion",
+        "tallies": {
+          "1": 6.0,
+          "4": 5.0,
+          "5": 3.0
+        },
+        "exhausted": 0.0,
+        "candidate": 2,
+        "rule": "lowest votes",
+        "elected": [
+          1
+        ]
+      },
+      {
+        "count": 4,
+        "action": "exclusion",
+        "tallies": {
+          "4": 5.0
+        },
+        "exhausted": 3.0,
+        "candidate": 5,
+        "rule": "lowest votes",
+        "elected": [
+          4
+        ],
+        "note": "remaining candidates equal remaining vacancies"
+      }
+    ]
+  }
+]
