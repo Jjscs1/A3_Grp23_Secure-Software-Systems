@@ -18,7 +18,13 @@ The frontend and backend still use `evp` as their token issuer.
 Staff can use the "Staff sign-in" option to sign in through `evp-staff`.
 
 The staff connection has been tested with `staff-broker-test`.
-Moving all staff accounts to this route is still unfinished.
+The five named demo staff accounts have also been created in `evp-staff`
+and linked to their existing application accounts in `evp`.
+Their application roles remain on the accounts in `evp`.
+
+The current `evp` browser flow denies direct local form login for users
+with the `REQUIRE_WEBAUTHN` helper role. Staff use "Staff sign-in".
+See sections 5 and 13 for the settings and tests.
 
 ## 1. Requirements
 
@@ -69,7 +75,8 @@ docker logs --tail 100 evp-keycloak
 ```
 
 On a fresh database, check that both `evp` and `evp-staff` are imported.
-Both updated exports passed a fresh import test.
+An earlier pair of broker exports passed a fresh import test.
+The newest local staff denial change has not yet been tested by fresh import.
 See section 15 for the results and remaining checks.
 
 Docker saves Keycloak data in `evp-keycloak-data`.
@@ -219,10 +226,11 @@ The following accounts were used in the `evp` realm:
 | `officer1` | Demo | Officer | `AEC_OFFICER` |
 | `admin-test` | Demo | Administrator | `ADMIN` |
 
-These local staff accounts belong to the earlier role-based setup.
-They have not all been moved to the separate staff realm.
+The staff accounts in this table keep their existing application roles
+in `evp`. Matching accounts in `evp-staff` handle staff authentication.
+The two accounts are connected by an identity provider link.
 
-For each account:
+For the four voter accounts:
 
 1. Open Users and create the account.
 2. Use an email such as `voter1@example.com`.
@@ -239,6 +247,46 @@ The backend uses `preferred_username` to connect them to those records.
 
 The application `ADMIN` role does not give access to the Keycloak
 administration console.
+
+### Linked demo staff accounts
+
+On the tested local setup, these accounts are now linked:
+
+| Application account in `evp` | Staff account in `evp-staff` | Application role in `evp` |
+| --- | --- | --- |
+| `delegate1` | `delegate1` | `DELEGATE` |
+| `delegate2` | `delegate2` | `DELEGATE` |
+| `delegate3` | `delegate3` | `DELEGATE` |
+| `officer1` | `officer1` | `AEC_OFFICER` |
+| `admin-test` | `admin-test` | `ADMIN` |
+
+We used the Keycloak Admin API from PowerShell to prepare these accounts.
+`delegate1` already existed in `evp-staff`; the other four were created.
+We set local demo passwords in `evp-staff` and added `webauthn-register`
+where no WebAuthn credential was present.
+
+We then linked each existing `evp` account to the matching staff account
+using the identity provider alias `evp-staff` and the staff account's ID.
+The existing `evp` account IDs and application roles were preserved.
+Old local credentials in `evp` were not deleted during this step.
+
+For a new setup, the same account preparation is needed:
+
+1. Create the five application accounts in `evp` with the roles above.
+2. Create their matching accounts in `evp-staff`.
+3. Set passwords in `evp-staff` and require `Webauthn Register` for setup.
+4. Use the Admin API to link each application account to the correct
+   staff account under the identity provider alias `evp-staff`.
+5. Check the linked account IDs and usernames before testing login.
+6. Register a passkey for each staff account through "Staff sign-in".
+
+Matching usernames or email addresses alone do not create these links.
+The account links were created explicitly by the administrator.
+A reusable provisioning script has not yet been saved in the repository.
+
+The partial realm exports do not contain these users, passwords,
+registered passkeys, user role assignments, or account links.
+Importing the JSON files alone does not recreate this user setup.
 
 ### Staff broker test account
 
@@ -266,7 +314,8 @@ No voting or delegate access is assigned to this account.
 That message is expected for this test account.
 
 Staff authentication and application permissions are separate.
-Role mapping for the final staff accounts still needs to be completed.
+The five linked demo staff accounts retain the roles listed above in `evp`.
+The separate `staff-broker-test` account remains a login test account.
 
 ## 5. Staff WebAuthn settings
 
@@ -289,7 +338,7 @@ review as part of the final flow review.
 The current setup uses a password followed by WebAuthn.
 It is not a passwordless-only login flow.
 
-### Earlier role-based checks in evp
+### Block direct local staff login in evp
 
 The `evp` realm still uses `evp-browser-staff-mfa`.
 
@@ -299,12 +348,14 @@ These roles include the helper role `REQUIRE_WEBAUTHN`:
 - `AEC_OFFICER`
 - `ADMIN`
 
-Its conditional second-factor flow uses:
+Inside its forms flow, the `Browser - Conditional 2FA` subflow is Conditional.
+Despite its existing name, it now denies local staff login. It uses:
 
 - Condition - user role: Required
 - Selected role: `REQUIRE_WEBAUTHN`
 - Negate output: Off
-- WebAuthn Authenticator: Required
+- Deny access: Required
+- WebAuthn Authenticator: Disabled
 - Condition - user configured: Disabled
 - Condition - credential: Disabled
 - OTP Form: Disabled
@@ -316,8 +367,14 @@ It does not itself grant access to application features.
 The `VOTER` role does not include it.
 Do not add it to the realm's default roles.
 
-The existing local staff route remains in place.
-The separate staff realm has not yet become the only staff login route.
+For a user with the helper role, a successful local password check
+is followed by Deny access. The user must use "Staff sign-in" instead.
+WebAuthn remains required in the separate `evp-staff` browser flow.
+Disabling the local WebAuthn execution does not disable staff-realm WebAuthn.
+
+This rule applies to the local forms path in the selected browser flow.
+It does not by itself prove that existing SSO sessions, other flows,
+or account recovery routes cannot bypass the intended policy.
 
 ### Registering passkeys
 
@@ -412,7 +469,7 @@ Open http://localhost:5173.
 Click "Sign in with Keycloak".
 
 - For a local voter, enter the voter account details.
-- For the staff broker test, choose "Staff sign-in".
+- For staff accounts, choose "Staff sign-in".
 
 The page should show the signed-in username.
 
@@ -667,7 +724,8 @@ It was not a direct test of a submitted TOTP code being rejected.
 These checks apply to the earlier `evp` flow.
 They do not establish the same result for every staff-realm route.
 
-The WebAuthn check for `delegate3` has not been recorded as completed.
+No earlier local-flow WebAuthn test was recorded for `delegate3`.
+The later staff-realm account checks are described in section 13.
 
 ## 13. Staff broker tests
 
@@ -789,6 +847,45 @@ from the test evidence.
 This result applies to the tested account in its current state.
 It does not prove that local login is blocked for every staff account.
 
+### Linked staff account checks
+
+On 27 October 2026, we prepared and linked the five demo staff accounts
+listed in section 4.
+
+For `delegate1`, "Staff sign-in" led to passkey registration in `evp-staff`.
+Windows Hello registration succeeded, and the application showed
+`delegate1` with the delegate console.
+
+After sign-out, a fresh staff login asked for the passkey again.
+Completing verification allowed login.
+
+The tester also reported completing registration and a fresh staff login
+for `delegate2`, `delegate3`, `officer1`, and `admin-test`.
+Individual screenshots for those four checks were not reviewed here.
+
+### Local staff denial and voter regression checks
+
+After adding Deny access to the conditional local staff flow in `evp`,
+we checked these routes:
+
+| Account and route | Observed result |
+| --- | --- |
+| `delegate1`, direct `evp` login with the correct old local password | Access denied; did not reach the application |
+| `delegate1`, Staff sign-in with staff credentials and passkey | Login succeeded and the delegate console appeared |
+| `voter1`, normal local voter login | Tester reported successful login without a passkey prompt |
+
+The direct local denial check used an account that still had local
+credentials. It therefore checks the new denial rule, rather than only
+the absence of a local password.
+
+The exported configuration shows that `DELEGATE`, `AEC_OFFICER`, and
+`ADMIN` include `REQUIRE_WEBAUTHN`. `VOTER` does not include it.
+The condition checks that helper role and Deny access is Required.
+
+A separate direct local denial test has not been recorded for each of
+the other four staff accounts. Existing SSO sessions and alternative
+authentication routes still need review.
+
 ### Evidence
 
 Screenshots were captured for:
@@ -801,6 +898,8 @@ Screenshots were captured for:
 - A fresh username and password prompt after logout.
 - Passkey Error after cancellation.
 - The replacement WebAuthn credential.
+- Access denied for direct local `delegate1` login.
+- Successful brokered `delegate1` login after the denial rule was added.
 
 Keep passwords, tokens, OTP setup QR codes, and private keys
 out of screenshots committed to Git.
@@ -851,7 +950,7 @@ Use:
 | `evp` | `keycloak/evp-realm.json` |
 | `evp-staff` | `keycloak/evp-staff-realm.json` |
 
-The latest exports were checked for:
+The broker exports were previously checked for:
 
 - The correct realm names.
 - The enabled `evp-staff` identity provider.
@@ -863,11 +962,15 @@ The latest exports were checked for:
 - The `staff-webauthn` browser flow.
 - Masked client secrets.
 
+The later `evp` export was also checked for the active
+`evp-browser-staff-mfa` flow, the helper-role condition, Required Deny access,
+and the staff role composites. This change was saved in commit `b9f207c`.
+
 The exports contain configuration, not users or passkeys.
 They are not complete backups.
 
-A new setup must create users, register passkeys, and configure
-a matching broker client secret.
+A new setup must create users, assign application roles, link staff accounts,
+register passkeys, and configure a matching broker client secret.
 
 ### Import tests already completed
 
@@ -884,8 +987,8 @@ http://localhost:8082/realms/evp
 Those checks covered the earlier export, not the latest pair
 containing the completed broker connection.
 
-The latest evp and evp-staff exports were successfully imported
-into a fresh Keycloak 26.8.1 test container.
+The broker exports available before the local staff denial change were
+successfully imported into a fresh Keycloak 26.8.1 test container.
 
 Both discovery endpoints responded through port 8082.
 They returned these issuers:
@@ -895,8 +998,9 @@ They returned these issuers:
 
 These values match the Frontend URL saved in the exports.
 
-This confirms successful import and discovery responses.
-A complete login test on the fresh setup is still needed,
+This confirms import and discovery for that earlier pair of exports.
+The newer `evp` export with Required Deny access needs a fresh import test.
+A complete login test on the fresh setup is also still needed,
 including users, passkeys, and a matching broker client secret.
 
 ## 16. Work still needed
@@ -909,9 +1013,10 @@ Remaining work includes:
 
 - Finish checking all SEC-01 acceptance requirements.
 - Finish reviewing the staff browser flow.
-- Complete staff application role mapping.
-- Decide how existing local staff accounts move to the staff realm.
-- Ensure the intended staff authentication route cannot be bypassed.
+- Save and test a repeatable setup procedure or script for staff users,
+  their application roles, and identity provider links.
+- Repeat direct local denial checks for the other named staff accounts.
+- Check that the intended staff route cannot be bypassed through other paths.
 - Review first broker login and account-linking behaviour.
 - Review other authentication routes beyond the tested staff browser flow.
 - Test the latest pair of exports on a fresh setup.
