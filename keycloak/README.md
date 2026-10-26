@@ -772,6 +772,23 @@ It was not an application self-service recovery feature.
 Previously registered virtual credentials on other accounts may also
 need replacement if their virtual authenticator data was lost.
 
+### Direct local login check
+
+The staff-broker-test account in evp was linked to its account
+in evp-staff. Its Credentials page in evp showed "No credentials".
+
+We entered the full username and the staff-realm password directly
+on the evp login form, without selecting "Staff sign-in".
+
+Keycloak showed "Invalid username or password".
+The login attempt did not reach the application.
+
+An earlier attempt had a misspelled username and was excluded
+from the test evidence.
+
+This result applies to the tested account in its current state.
+It does not prove that local login is blocked for every staff account.
+
 ### Evidence
 
 Screenshots were captured for:
