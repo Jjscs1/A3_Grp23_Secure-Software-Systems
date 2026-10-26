@@ -69,7 +69,8 @@ docker logs --tail 100 evp-keycloak
 ```
 
 On a fresh database, check that both `evp` and `evp-staff` are imported.
-The updated pair of exports still needs a fresh import test.
+Both updated exports passed a fresh import test.
+See section 15 for the results and remaining checks.
 
 Docker saves Keycloak data in `evp-keycloak-data`.
 
@@ -845,7 +846,20 @@ http://localhost:8082/realms/evp
 Those checks covered the earlier export, not the latest pair
 containing the completed broker connection.
 
-The latest pair still needs a fresh import and setup test.
+The latest evp and evp-staff exports were successfully imported
+into a fresh Keycloak 26.8.1 test container.
+
+Both discovery endpoints responded through port 8082.
+They returned these issuers:
+
+- http://localhost:8081/realms/evp
+- http://localhost:8081/realms/evp-staff
+
+These values match the Frontend URL saved in the exports.
+
+This confirms successful import and discovery responses.
+A complete login test on the fresh setup is still needed,
+including users, passkeys, and a matching broker client secret.
 
 ## 16. Work still needed
 
