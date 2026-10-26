@@ -195,7 +195,7 @@ cd backend
 .\mvnw.cmd test
 ```
 
-Six tests passed: the application context test and five API tests.
+Eleven tests passed: one application context test, five API access tests, and five JWT validation tests.
 
 The API tests cover:
 
@@ -255,7 +255,10 @@ To test an authenticated request, sign in through the frontend and select "Check
 - The later audience mapper was verified in the updated export.
 - A frontend request with a Keycloak access token returned user data from `/api/me`.
 - Requests without a token or with a malformed token returned HTTP 401.
-- All six backend tests passed.
+- - All eleven backend tests passed.
+- JWT validation tests used temporary RSA keys and signed tokens through the application's security filter chain.
+- A correctly signed token was accepted.
+- Tokens with an invalid signature, expired timestamp, wrong issuer, or wrong audience were rejected with HTTP 401.
 
 ## Scope and limitations
 
@@ -264,7 +267,7 @@ It is not a production deployment.
 
 The JSON is an Admin Console partial export, not a complete backup or user migration.
 
-Backend JWT validation is configured, but dedicated negative tests for invalid signatures, expired tokens, wrong issuers, and wrong audiences remain to be added.
+Backend access-token validation has automated coverage for valid tokens, invalid signatures, expired tokens, wrong issuers, and wrong audiences. These tests do not cover frontend ID-token validation, nonce handling, or rejection of an incorrect PKCE verifier.
 
 Full SEC01 verification, role-based authorization, staff MFA, DPoP, session hardening, and rate limiting remain unfinished.
 SEC01 is not yet complete.
