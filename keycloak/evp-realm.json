@@ -2474,7 +2474,7 @@
         {
           "authenticator": "webauthn-authenticator",
           "authenticatorFlow": false,
-          "requirement": "REQUIRED",
+          "requirement": "DISABLED",
           "priority": 40,
           "autheticatorFlow": false,
           "userSetupAllowed": false
@@ -2493,6 +2493,14 @@
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 51,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "deny-access-authenticator",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 52,
           "autheticatorFlow": false,
           "userSetupAllowed": false
         }
