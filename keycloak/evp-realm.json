@@ -49,9 +49,41 @@
   "roles": {
     "realm": [
       {
+        "id": "5d47e0d0-dab2-4b58-967c-379a24c53caf",
+        "name": "VOTER",
+        "description": "Voter access for the EVP application",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "bd5e252e-68ef-4ab6-97d0-127277990b17",
+        "attributes": {}
+      },
+      {
         "id": "70a21eec-eb37-43f0-845e-1f3735d0a9bd",
         "name": "offline_access",
         "description": "${role_offline-access}",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "bd5e252e-68ef-4ab6-97d0-127277990b17",
+        "attributes": {}
+      },
+      {
+        "id": "c036948c-7d4d-4a0f-a8cd-b1c0c2988e78",
+        "name": "ADMIN",
+        "description": "Administrator for the EVP application",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "REQUIRE_WEBAUTHN"
+          ]
+        },
+        "clientRole": false,
+        "containerId": "bd5e252e-68ef-4ab6-97d0-127277990b17",
+        "attributes": {}
+      },
+      {
+        "id": "b344d519-a552-46dc-85a6-ebfb3fdec0b8",
+        "name": "AUDITOR",
+        "description": "Auditor for the EVP application",
         "composite": false,
         "clientRole": false,
         "containerId": "bd5e252e-68ef-4ab6-97d0-127277990b17",
@@ -62,6 +94,43 @@
         "name": "uma_authorization",
         "description": "${role_uma_authorization}",
         "composite": false,
+        "clientRole": false,
+        "containerId": "bd5e252e-68ef-4ab6-97d0-127277990b17",
+        "attributes": {}
+      },
+      {
+        "id": "956b67ca-3a0e-40bb-95c2-51afd4664128",
+        "name": "REQUIRE_WEBAUTHN",
+        "description": "Requires WebAuthn authentication for staff",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "bd5e252e-68ef-4ab6-97d0-127277990b17",
+        "attributes": {}
+      },
+      {
+        "id": "d3465286-a831-4201-bb59-e8570ff2ffea",
+        "name": "AEC_OFFICER",
+        "description": "Election officer for the EVP application",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "REQUIRE_WEBAUTHN"
+          ]
+        },
+        "clientRole": false,
+        "containerId": "bd5e252e-68ef-4ab6-97d0-127277990b17",
+        "attributes": {}
+      },
+      {
+        "id": "03b0c377-8560-4ac4-ab0c-8fdbe5f07711",
+        "name": "DELEGATE",
+        "description": "Delegate access for the EVP application",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "REQUIRE_WEBAUTHN"
+          ]
+        },
         "clientRole": false,
         "containerId": "bd5e252e-68ef-4ab6-97d0-127277990b17",
         "attributes": {}
@@ -468,17 +537,17 @@
     "totpAppMicrosoftAuthenticatorName"
   ],
   "localizationTexts": {},
-  "webAuthnPolicyRpEntityName": "keycloak",
+  "webAuthnPolicyRpEntityName": "EVP Staff",
   "webAuthnPolicySignatureAlgorithms": [
     "ES256",
     "RS256"
   ],
-  "webAuthnPolicyRpId": "",
+  "webAuthnPolicyRpId": "localhost",
   "webAuthnPolicyAttestationConveyancePreference": "not specified",
   "webAuthnPolicyAuthenticatorAttachment": "not specified",
   "webAuthnPolicyRequireResidentKey": "not specified",
   "webAuthnPolicyResidentKey": "not specified",
-  "webAuthnPolicyUserVerificationRequirement": "not specified",
+  "webAuthnPolicyUserVerificationRequirement": "required",
   "webAuthnPolicyCreateTimeout": 0,
   "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyAcceptableAaguids": [],
@@ -2288,6 +2357,185 @@
       ]
     },
     {
+      "id": "a348736a-b4a1-4067-8a18-5f3a288a2366",
+      "alias": "evp-browser-staff-mfa",
+      "description": "browser-staff-mfa",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-spnego",
+          "authenticatorFlow": false,
+          "requirement": "DISABLED",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "identity-provider-redirector",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 25,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "ALTERNATIVE",
+          "priority": 26,
+          "autheticatorFlow": true,
+          "flowAlias": "evp-browser-staff-mfa Organization",
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "autheticatorFlow": true,
+          "flowAlias": "evp-browser-staff-mfa forms",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "576a2d11-be06-4f64-bcaa-53557dc1c90d",
+      "alias": "evp-browser-staff-mfa Browser - Conditional 2FA",
+      "description": "Flow to determine if any 2FA is required for the authentication",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "authenticatorFlow": false,
+          "requirement": "DISABLED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorConfig": "evp-browser-staff-mfa browser-conditional-credential",
+          "authenticator": "conditional-credential",
+          "authenticatorFlow": false,
+          "requirement": "DISABLED",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorFlow": false,
+          "requirement": "DISABLED",
+          "priority": 30,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "webauthn-authenticator",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 40,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-recovery-authn-code-form",
+          "authenticatorFlow": false,
+          "requirement": "DISABLED",
+          "priority": 50,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorConfig": "require-delegate-webauthn",
+          "authenticator": "conditional-user-role",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 51,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "f2ccf7e5-7623-4672-9bfa-e4f8d667f9f7",
+      "alias": "evp-browser-staff-mfa Browser - Conditional Organization",
+      "description": "Flow to determine if the organization identity-first login is to be used",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "organization",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "f7cf402e-0302-47cc-b16c-7a3c0425244b",
+      "alias": "evp-browser-staff-mfa Organization",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 10,
+          "autheticatorFlow": true,
+          "flowAlias": "evp-browser-staff-mfa Browser - Conditional Organization",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "5684461c-35f1-463b-b919-4962637e5a0a",
+      "alias": "evp-browser-staff-mfa forms",
+      "description": "Username, password, otp and other auth forms.",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "autheticatorFlow": true,
+          "flowAlias": "evp-browser-staff-mfa Browser - Conditional 2FA",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
       "id": "e8891b82-01b3-4342-b906-d69d7aceea46",
       "alias": "first broker login",
       "description": "Actions taken after first broker login with identity provider account, which is not yet linked to any Keycloak account",
@@ -2486,10 +2734,24 @@
       }
     },
     {
+      "id": "ca99eb93-521c-46d3-a58b-750c16ec7d08",
+      "alias": "evp-browser-staff-mfa browser-conditional-credential",
+      "config": {
+        "credentials": "webauthn-passwordless"
+      }
+    },
+    {
       "id": "16f2f2a6-903d-489b-9b10-0642df3a2f8c",
       "alias": "first-broker-login-conditional-credential",
       "config": {
         "credentials": "webauthn-passwordless"
+      }
+    },
+    {
+      "id": "5d415849-2031-4608-9435-13dbaea848da",
+      "alias": "require-delegate-webauthn",
+      "config": {
+        "condUserRole": "REQUIRE_WEBAUTHN"
       }
     },
     {
@@ -2628,7 +2890,7 @@
       "config": {}
     }
   ],
-  "browserFlow": "browser",
+  "browserFlow": "evp-browser-staff-mfa",
   "registrationFlow": "registration",
   "directGrantFlow": "direct grant",
   "resetCredentialsFlow": "reset credentials",
@@ -2637,13 +2899,18 @@
   "firstBrokerLoginFlow": "first broker login",
   "attributes": {
     "cibaBackchannelTokenDeliveryMode": "poll",
-    "cibaExpiresIn": "120",
     "cibaAuthRequestedUserHint": "login_hint",
-    "oauth2DeviceCodeLifespan": "600",
     "oauth2DevicePollingInterval": "5",
-    "parRequestUriLifespan": "60",
+    "clientOfflineSessionMaxLifespan": "0",
+    "clientSessionIdleTimeout": "0",
+    "clientOfflineSessionIdleTimeout": "0",
     "cibaInterval": "5",
-    "realmReusableOtpCode": "false"
+    "realmReusableOtpCode": "false",
+    "cibaExpiresIn": "120",
+    "oauth2DeviceCodeLifespan": "600",
+    "parRequestUriLifespan": "60",
+    "clientSessionMaxLifespan": "0",
+    "scimApiEnabled": "false"
   },
   "keycloakVersion": "26.8.1",
   "userManagedAccessAllowed": false,
