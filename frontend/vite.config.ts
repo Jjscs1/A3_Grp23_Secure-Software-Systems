@@ -5,7 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8080',
+      // Preserve the browser-facing Host so DPoP htu matches at the backend.
+      '/api': { target: 'http://localhost:8080', changeOrigin: false },
     },
   },
   test: {

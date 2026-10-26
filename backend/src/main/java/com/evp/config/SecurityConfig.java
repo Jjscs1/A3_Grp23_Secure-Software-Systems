@@ -16,6 +16,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -36,7 +38,7 @@ public class SecurityConfig {
 
         http
             .cors(Customizer.withDefaults())
-            // Bearer authentication only; cookies are not used for authentication.
+            // DPoP authentication only; cookies are not used in this implementation stage.
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -62,6 +64,16 @@ public class SecurityConfig {
                            .requestMatchers("/api/**").authenticated()
                 .anyRequest().denyAll())
             .oauth2ResourceServer(oauth -> oauth
+                // Spring Security 6.5 validates DPoP proofs automatically.
+                // Reject Bearer so a bound token cannot bypass proof validation.
+                .bearerTokenResolver(request -> {
+                    String header = request.getHeader("Authorization");
+                    if (header != null && !header.regionMatches(true, 0, "DPoP ", 0, 5)) {
+                        throw new OAuth2AuthenticationException(
+                            new OAuth2Error("invalid_token"), "DPoP authentication is required.");
+                    }
+                    return null;
+                })
                 .jwt(jwt -> jwt
                     .jwtAuthenticationConverter(keycloakRoles())));
 
@@ -110,7 +122,7 @@ public class SecurityConfig {
             List.of("GET", "POST", "OPTIONS")
         );
         configuration.setAllowedHeaders(
-            List.of("Authorization", "Content-Type")
+            List.of("Authorization", "DPoP", "Content-Type")
         );
         configuration.setAllowCredentials(false);
 

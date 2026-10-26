@@ -1,6 +1,7 @@
+import { userManager } from './oidcUserManager'
 import { useEffect, useState } from 'react'
 import { useAuth } from 'react-oidc-context'
-import { apiFetch, setAccessTokenProvider } from './api/http'
+import { apiFetch, setAccessTokenProvider, setDPoPProofProvider } from './api/http'
 import {
   CandidateList,
   type CandidateView,
@@ -139,10 +140,18 @@ export function App() {
       return accessToken
     })
 
+    setDPoPProofProvider(async (url, method) => {
+      if (!user || user.expired || user.token_type.toLowerCase() !== 'dpop') {
+        throw new Error('A new DPoP sign-in is required.')
+      }
+      return userManager.dpopProof(url, user, method)
+    })
+
     setReadyToken(accessToken)
 
     return () => {
       setAccessTokenProvider(() => undefined)
+      setDPoPProofProvider(undefined)
     }
   }, [accessToken, user])
 
