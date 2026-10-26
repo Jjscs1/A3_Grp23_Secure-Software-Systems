@@ -1,5 +1,6 @@
 package com.evp.config;
 
+import com.evp.security.SecurityHeaders;
 import jakarta.servlet.DispatcherType;
 import java.util.Collection;
 import java.util.List;
@@ -20,9 +21,10 @@ import org.springframework.security.web.SecurityFilterChain;
  * MERGE NOTE: SecurityConfig belongs to the Identity and access member (SEC-01, SEC-03,
  * SEC-04). This version is just enough to run and test SEC-05/07/08/10/11 on their own.
  * When merging, keep from this file:
- *   1. permitAll for POST /api/public/enrolment-check          (SEC-08)
- *   2. permitAll for GET /api/tokens/public-key and POST /api/ballots   (SEC-11)
- *   3. @EnableMethodSecurity, since SEC-05 and SEC-11 use @PreAuthorize
+ *   1. SecurityHeaders.configure(http);                        (SEC-07)
+ *   2. permitAll for POST /api/public/enrolment-check          (SEC-08)
+ *   3. permitAll for GET /api/tokens/public-key and POST /api/ballots   (SEC-11)
+ *   4. @EnableMethodSecurity, since SEC-05 and SEC-11 use @PreAuthorize
  */
 @Configuration
 @EnableWebSecurity
@@ -31,6 +33,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
+        SecurityHeaders.configure(http);
         http
                 // Bearer tokens in the Authorization header, no cookies, so CSRF does not apply.
                 // If SEC-04 moves tokens into cookies, CSRF protection must be turned back on.

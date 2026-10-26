@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+import { apiFetch } from './api/http';
+import { CandidateList, type CandidateView } from './components/CandidateList';
 import { ChangeRequestPanel } from './components/ChangeRequestPanel';
 
 /**
@@ -7,9 +10,21 @@ import { ChangeRequestPanel } from './components/ChangeRequestPanel';
 const DIVISION = 'MELBOURNE';
 
 export function App() {
+  const [candidates, setCandidates] = useState<CandidateView[]>([]);
+
+  useEffect(() => {
+    apiFetch<CandidateView[]>(`/api/candidates?division=${encodeURIComponent(DIVISION)}`)
+      .then(setCandidates)
+      .catch(() => setCandidates([]));
+  }, []);
+
   return (
     <main>
       <h1>Electronic Voting Platform</h1>
+      <section className="card" aria-labelledby="cand-heading">
+        <h2 id="cand-heading">Candidates: {DIVISION}</h2>
+        <CandidateList candidates={candidates} />
+      </section>
       <ChangeRequestPanel division={DIVISION} />
     </main>
   );
