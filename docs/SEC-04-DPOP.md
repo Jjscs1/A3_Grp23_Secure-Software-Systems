@@ -64,14 +64,17 @@ Frontend tests check signed proofs with real WebCrypto, a non-extractable privat
 key, different proof IDs, request binding, failure without a proof, refusal to send
 credentials to another origin, and anonymous ballot requests.
 
-A real Keycloak/browser login with this patch still needs to be checked locally.
-In DevTools, check `token_type: DPoP`, `expires_in: 600`, and a successful `/api/me`.
+On 27 October 2026, a local voter1 login returned `token_type: DPoP` and
+`expires_in: 600`. The browser request to `/api/me` returned 200 OK.
 Do not commit full token responses or Authorization headers as evidence.
 
 The existing blind-RSA dependency still produces a browser `crypto` warning
 at build time. A successful build is not a complete voting-flow test.
 
 ## Remaining SEC-04 work
+
+This section describes the original DPoP-only stage. See [SEC-04-SESSION.md](SEC-04-SESSION.md)
+for the later application-session cookie and idle-timeout implementation.
 
 Tokens are still held in memory by the frontend at this stage. This does not
 implement the required HttpOnly, Secure, SameSite=Strict, __Host- session cookie.

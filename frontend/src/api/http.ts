@@ -64,7 +64,7 @@ export async function apiFetch<T>(path: string, request: ApiRequest = {}): Promi
     }
   }
 
-  const response = await fetch(path, { ...init, headers, body, credentials: 'omit' });
+  const response = await fetch(path, { ...init, headers, body, credentials: auth ? 'same-origin' : 'omit' });
   const text = await response.text();
   let parsed: unknown;
   try {

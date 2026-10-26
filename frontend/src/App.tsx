@@ -1,7 +1,8 @@
 import { userManager } from './oidcUserManager'
+import { startSession, watchIdle } from './session'
 import { useEffect, useState } from 'react'
 import { useAuth } from 'react-oidc-context'
-import { apiFetch, setAccessTokenProvider, setDPoPProofProvider } from './api/http'
+import { ApiError, apiFetch, setAccessTokenProvider, setDPoPProofProvider } from './api/http'
 import {
   CandidateList,
   type CandidateView,
@@ -147,13 +148,33 @@ export function App() {
       return userManager.dpopProof(url, user, method)
     })
 
-    setReadyToken(accessToken)
+    let cancelled = false
+    setReadyToken(undefined)
+    if (accessToken && user?.id_token) {
+      void startSession(accessToken, user.id_token).then(() => {
+        if (!cancelled) setReadyToken(accessToken)
+      }).catch(() => {
+        if (!cancelled) setActionError('Your session could not be opened. Please sign out and sign in again.')
+      })
+    }
 
     return () => {
+      cancelled = true
       setAccessTokenProvider(() => undefined)
       setDPoPProofProvider(undefined)
     }
   }, [accessToken, user])
+
+  useEffect(() => {
+    if (!readyToken) return
+    return watchIdle(() => {
+      setReadyToken(undefined)
+      setActionError('Your session ended after 90 seconds without activity. Please sign in again.')
+      // Server independently enforces idle expiry, including when this tab is suspended.
+      void apiFetch('/api/session/end', { method: 'POST' }).catch(() => undefined)
+        .finally(() => { void auth.removeUser() })
+    }, async () => { await apiFetch('/api/session/activity', { method: 'POST' }) })
+  }, [readyToken, auth.removeUser])
 
   async function login() {
     setActionError('')
@@ -168,8 +189,17 @@ export function App() {
   async function logout() {
     setActionError('')
     setReadyToken(undefined)
-    setAccessTokenProvider(() => undefined)
 
+    try {
+      await apiFetch('/api/session/end', { method: 'POST' })
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 401)) {
+        setReadyToken(accessToken)
+        setActionError('Unable to confirm session closure. Please try signing out again.')
+        return
+      }
+    }
+    setAccessTokenProvider(() => undefined)
     try {
       await auth.signoutRedirect()
     } catch {

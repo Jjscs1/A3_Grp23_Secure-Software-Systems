@@ -1,6 +1,10 @@
 package com.evp.config;
 
 import com.evp.security.SecurityHeaders;
+import com.evp.identity.session.BoundSessionFilter;
+import com.evp.identity.session.BoundSessionService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import jakarta.servlet.DispatcherType;
 import java.util.Collection;
 import java.util.List;
@@ -31,14 +35,17 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain apiSecurity(HttpSecurity http)
+    public SecurityFilterChain apiSecurity(HttpSecurity http, BoundSessionService sessions,
+            @Value("${evp.session.enabled:true}") boolean sessionEnabled,
+            @Value("${evp.session.origin:http://localhost:5173}") String appOrigin)
             throws Exception {
 
         SecurityHeaders.configure(http);
 
         http
             .cors(Customizer.withDefaults())
-            // DPoP authentication only; cookies are not used in this implementation stage.
+            // Cookies never authenticate alone: every protected request requires explicit DPoP.
+            // BoundSessionFilter also checks Origin for authenticated mutation requests.
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -77,6 +84,9 @@ public class SecurityConfig {
                 .jwt(jwt -> jwt
                     .jwtAuthenticationConverter(keycloakRoles())));
 
+        if (sessionEnabled) {
+            http.addFilterBefore(new BoundSessionFilter(sessions, appOrigin), AuthorizationFilter.class);
+        }
         return http.build();
     }
 

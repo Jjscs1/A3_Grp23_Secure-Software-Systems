@@ -20,7 +20,7 @@ describe('DPoP API requests', () => {
     const options = send.mock.calls[0][1]
     expect(options.headers.get('Authorization')).toBe('DPoP bound-token')
     expect(options.headers.get('DPoP')).toBe('signed-proof')
-    expect(options.credentials).toBe('omit')
+    expect(options.credentials).toBe('same-origin')
   })
   it('uses POST when signing a POST request', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response()))

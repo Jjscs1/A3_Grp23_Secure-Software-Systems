@@ -8,6 +8,8 @@ export const userManager = new VerifiedUserManager({
   redirect_uri: 'http://localhost:5173/auth/callback',
   post_logout_redirect_uri: 'http://localhost:5173/',
   response_type: 'code',
+  prompt: 'login',
+  max_age: 0,
   scope: 'openid profile email',
   disablePKCE: false,
   automaticSilentRenew: false,
