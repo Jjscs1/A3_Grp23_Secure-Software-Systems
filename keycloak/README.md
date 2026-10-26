@@ -76,7 +76,7 @@ docker logs --tail 100 evp-keycloak
 
 On a fresh database, check that both `evp` and `evp-staff` are imported.
 An earlier pair of broker exports passed a fresh import test.
-The newest local staff denial change has not yet been tested by fresh import.
+The newest local staff denial export also passed a fresh import test.
 See section 15 for the results and remaining checks.
 
 Docker saves Keycloak data in `evp-keycloak-data`.
@@ -999,7 +999,15 @@ They returned these issuers:
 These values match the Frontend URL saved in the exports.
 
 This confirms import and discovery for that earlier pair of exports.
-The newer `evp` export with Required Deny access needs a fresh import test.
+On 27 October 2026, we imported the updated `evp` export with Required
+Deny access and the `evp-staff` export into a fresh Keycloak 26.8.1
+test container. Both realms imported successfully.
+
+Both discovery endpoints responded on port 8082 and returned the
+configured issuers on port 8081. The test container was then stopped.
+
+This checked import and discovery only. Staff login was not tested
+on this fresh container.
 A complete login test on the fresh setup is also still needed,
 including users, passkeys, and a matching broker client secret.
 
@@ -1019,7 +1027,8 @@ Remaining work includes:
 - Check that the intended staff route cannot be bypassed through other paths.
 - Review first broker login and account-linking behaviour.
 - Review other authentication routes beyond the tested staff browser flow.
-- Test the latest pair of exports on a fresh setup.
+- Complete a fresh-setup login test with users, account links,
+  passkeys, and a matching broker client secret.
 - Finish SEC-03 role and permission coverage.
 - Add DPoP.
 - Complete session security requirements.
