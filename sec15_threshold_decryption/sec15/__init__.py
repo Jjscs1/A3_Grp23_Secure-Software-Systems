@@ -1,0 +1,1 @@
+"""SEC-15: Threshold decryption after close of poll."""
