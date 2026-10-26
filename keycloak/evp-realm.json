@@ -1,6 +1,8 @@
 {
   "id": "bd5e252e-68ef-4ab6-97d0-127277990b17",
   "realm": "evp",
+  "displayName": "",
+  "displayNameHtml": "",
   "notBefore": 0,
   "defaultSignatureAlgorithm": "RS256",
   "revokeRefreshToken": false,
@@ -1695,7 +1697,37 @@
   "enabledEventTypes": [],
   "adminEventsEnabled": false,
   "adminEventsDetailsEnabled": false,
-  "identityProviders": [],
+  "identityProviders": [
+    {
+      "alias": "evp-staff",
+      "displayName": "Staff sign-in",
+      "internalId": "e82c4177-9494-4763-8652-9f9e3938b7e5",
+      "providerId": "keycloak-oidc",
+      "enabled": true,
+      "config": {
+        "userInfoUrl": "http://localhost:8080/realms/evp-staff/protocol/openid-connect/userinfo",
+        "validateSignature": "true",
+        "tokenUrl": "http://localhost:8080/realms/evp-staff/protocol/openid-connect/token",
+        "clientId": "evp-staff-broker",
+        "jwksUrl": "http://localhost:8080/realms/evp-staff/protocol/openid-connect/certs",
+        "issuer": "http://localhost:8081/realms/evp-staff",
+        "pkceMethod": "S256",
+        "useJwksUrl": "true",
+        "pkceEnabled": "true",
+        "authorizationUrl": "http://localhost:8081/realms/evp-staff/protocol/openid-connect/auth",
+        "clientAuthMethod": "client_secret_post",
+        "logoutUrl": "http://localhost:8081/realms/evp-staff/protocol/openid-connect/logout",
+        "clientSecret": "**********"
+      },
+      "types": [
+        "USER_AUTHENTICATION",
+        "CLIENT_ASSERTION",
+        "TRUST_MATERIAL",
+        "EXCHANGE_EXTERNAL_TOKEN",
+        "JWT_AUTHORIZATION_GRANT"
+      ]
+    }
+  ],
   "identityProviderMappers": [],
   "components": {
     "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy": [
@@ -2900,6 +2932,7 @@
   "attributes": {
     "cibaBackchannelTokenDeliveryMode": "poll",
     "cibaAuthRequestedUserHint": "login_hint",
+    "acr.uri.map": "{}",
     "oauth2DevicePollingInterval": "5",
     "clientOfflineSessionMaxLifespan": "0",
     "clientSessionIdleTimeout": "0",
@@ -2908,9 +2941,12 @@
     "realmReusableOtpCode": "false",
     "cibaExpiresIn": "120",
     "oauth2DeviceCodeLifespan": "600",
+    "saml.signature.algorithm": "",
     "parRequestUriLifespan": "60",
     "clientSessionMaxLifespan": "0",
-    "scimApiEnabled": "false"
+    "frontendUrl": "http://localhost:8081",
+    "scimApiEnabled": "false",
+    "acr.loa.map": "{}"
   },
   "keycloakVersion": "26.8.1",
   "userManagedAccessAllowed": false,

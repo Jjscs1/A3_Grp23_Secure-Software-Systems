@@ -4,16 +4,25 @@ This guide explains how to run and test the login feature on your computer.
 
 The shared project uses:
 
-- Keycloak to manage user sign-in.
+- Keycloak for sign-in.
 - React for the frontend.
 - Spring Boot for the backend.
-- PostgreSQL for the application database.
+- PostgreSQL for application data.
 
-The `evp-realm.json` file contains the Keycloak settings for this project.
+There are two Keycloak configuration files:
+
+- `evp-realm.json`: the application realm, voter login, and staff identity provider.
+- `evp-staff-realm.json`: the staff realm and its WebAuthn login flow.
+
+The frontend and backend still use `evp` as their token issuer.
+Staff can use the "Staff sign-in" option to sign in through `evp-staff`.
+
+The staff connection has been tested with `staff-broker-test`.
+Moving all staff accounts to this route is still unfinished.
 
 ## 1. Requirements
 
-Before starting, install:
+Install:
 
 - Docker Desktop with Linux containers.
 - Java 21.
@@ -23,8 +32,8 @@ You also need a local copy of this repository.
 
 Use PowerShell for the commands below.
 
-The repository root means the main project folder that contains
-`frontend`, `backend`, and `keycloak`.
+The repository root is the folder containing `frontend`, `backend`,
+and `keycloak`.
 
 ## 2. Start Keycloak
 
@@ -37,7 +46,7 @@ $adminCredential = Get-Credential -UserName admin -Message "Choose a local Keycl
 $env:KC_BOOTSTRAP_ADMIN_PASSWORD = $adminCredential.GetNetworkCredential().Password
 ```
 
-Create and start the Keycloak container:
+Create and start the container:
 
 ```powershell
 docker run -d --name evp-keycloak -p 127.0.0.1:8081:8080 -v evp-keycloak-data:/opt/keycloak/data --mount "type=bind,source=$($PWD.Path)\keycloak,target=/opt/keycloak/data/import,readonly" -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD quay.io/keycloak/keycloak:26.8.1 start-dev --import-realm
@@ -50,50 +59,152 @@ Remove-Item Env:KC_BOOTSTRAP_ADMIN_PASSWORD
 Remove-Variable adminCredential
 ```
 
-The password still exists in the Docker container settings.
-Use a password only for this local demo. Do not put passwords in Git.
+The bootstrap password remains in the container settings.
+Use a password dedicated to this local demo.
 
-Check the startup messages:
+Check startup:
 
 ```powershell
-docker logs --tail 60 evp-keycloak
+docker logs --tail 100 evp-keycloak
 ```
 
-On a new database, these messages should appear:
+On a fresh database, check that both `evp` and `evp-staff` are imported.
+The updated pair of exports still needs a fresh import test.
 
-```text
-Realm 'evp' imported
-Import finished successfully
-```
+Docker saves Keycloak data in `evp-keycloak-data`.
 
-Docker saves the Keycloak data in `evp-keycloak-data`.
-
-If the container already exists, use this command instead of
-creating it again:
+If the container already exists, start it instead:
 
 ```powershell
 docker start evp-keycloak
 ```
 
-Keycloak does not import the JSON again if the `evp` realm already
-exists. Editing the JSON does not change an existing realm.
+Startup import skips a realm that already exists.
+Changing an exported JSON file does not update the running realm.
 
-Do not delete your existing data volume just to update the settings.
+Do not delete the existing data volume to update settings.
 
-## 3. Create demo users
+Open http://localhost:8081/admin/ and sign in with the local admin account.
 
-Open http://localhost:8081/admin/ and sign in with your local
-Keycloak admin account.
+The exports do not include users, passwords, or registered passkeys.
+They also hide client secrets. Complete the staff connection below
+before testing staff login on a new setup.
 
-Select the `evp` realm.
+## 3. Connect the staff realm
 
-The export contains roles and settings, but it does not contain
-user accounts, passwords, or registered passkeys.
+The connection uses:
 
-Each team member needs to create the demo accounts on their
-own Keycloak setup.
+- Application realm: `evp`
+- Staff realm: `evp-staff`
+- Identity provider alias in `evp`: `evp-staff`
+- Login button label: `Staff sign-in`
+- Client in `evp-staff`: `evp-staff-broker`
 
-Create these accounts under Users:
+The application starts login through `evp`.
+Choosing "Staff sign-in" sends the user to `evp-staff`.
+After successful staff authentication, `evp` completes application login.
+
+The application receives tokens issued by `evp`.
+It does not directly accept `evp-staff` tokens.
+
+### Staff realm settings
+
+In `evp-staff`, open Realm settings.
+
+Check:
+
+- Frontend URL: `http://localhost:8081`
+- Browser flow: `staff-webauthn`
+
+The exported `evp` realm also uses `http://localhost:8081`
+as its Frontend URL.
+
+### Staff broker client
+
+In `evp-staff`, open Clients > `evp-staff-broker`.
+
+Check:
+
+- Client authentication: On
+- Standard flow: On
+- Direct access grants: Off
+- PKCE method: `S256`
+
+Valid redirect URI:
+
+```text
+http://localhost:8081/realms/evp/broker/evp-staff/endpoint
+```
+
+Valid post-logout redirect URI:
+
+```text
+http://localhost:8081/realms/evp/broker/evp-staff/endpoint/logout_response
+```
+
+The post-logout URI is needed to return from staff logout.
+Without it, the tested setup showed "Invalid redirect uri".
+
+### Identity provider settings
+
+In `evp`, open Identity providers > `evp-staff`.
+
+Check these settings:
+
+| Setting | Value |
+| --- | --- |
+| Display name | `Staff sign-in` |
+| Client ID | `evp-staff-broker` |
+| Client authentication | Client secret sent in the request body |
+| Issuer | `http://localhost:8081/realms/evp-staff` |
+| Authorization URL | `http://localhost:8081/realms/evp-staff/protocol/openid-connect/auth` |
+| Token URL | `http://localhost:8080/realms/evp-staff/protocol/openid-connect/token` |
+| User Info URL | `http://localhost:8080/realms/evp-staff/protocol/openid-connect/userinfo` |
+| Logout URL | `http://localhost:8081/realms/evp-staff/protocol/openid-connect/logout` |
+| Validate signatures | On |
+| Use JWKS URL | On |
+| JWKS URL | `http://localhost:8080/realms/evp-staff/protocol/openid-connect/certs` |
+| PKCE | On |
+| PKCE method | `S256` |
+
+These URLs are for both realms running inside the same Keycloak container.
+
+Browser requests use host port 8081.
+Keycloak's internal requests use container port 8080.
+
+Port 8080 in the internal URLs means Keycloak inside its container.
+It does not mean the Spring Boot server running on the Windows host.
+
+The issuer remains the public address on port 8081.
+
+### Set the shared client secret after import
+
+The partial exports hide the client secret.
+The masked value is not a usable setup secret.
+
+On a fresh setup:
+
+1. Select `evp-staff`.
+2. Open Clients > `evp-staff-broker` > Credentials.
+3. Generate a new client secret.
+4. Copy it locally.
+5. Select `evp`.
+6. Open Identity providers > `evp-staff`.
+7. Paste the same value into Client Secret.
+8. Save.
+
+Do not put the actual secret in the repository.
+
+Do not regenerate a working setup's secret unless you also update
+the identity provider to match.
+
+## 4. Create demo users
+
+Each team member must create users on their own Keycloak setup.
+
+### Existing application accounts
+
+The following accounts were used in the `evp` realm:
 
 | Username | First name | Last name | Realm role |
 | --- | --- | --- | --- |
@@ -107,103 +218,154 @@ Create these accounts under Users:
 | `officer1` | Demo | Officer | `AEC_OFFICER` |
 | `admin-test` | Demo | Administrator | `ADMIN` |
 
+These local staff accounts belong to the earlier role-based setup.
+They have not all been moved to the separate staff realm.
+
 For each account:
 
-1. Use an email such as `voter1@example.com`.
-2. Leave Email verified Off.
-3. Leave Required user actions empty.
-4. Create the user.
-5. Open Credentials and set a local test password.
-6. Set Temporary to Off.
-7. Open Role mapping.
-8. Choose Assign role, then Realm.
-9. Assign the role shown in the table.
+1. Open Users and create the account.
+2. Use an email such as `voter1@example.com`.
+3. Leave Email verified Off.
+4. Set a local test password under Credentials.
+5. Set Temporary to Off.
+6. Open Role mapping > Assign role > Realm.
+7. Assign the role in the table.
 
-The username alone does not give a user a role.
+The username alone does not grant a role.
 
-The four voter usernames match the shared application's demo
-voter records. The backend uses `preferred_username` to connect
-these accounts to those records.
+The four voter usernames match the application's seeded demo records.
+The backend uses `preferred_username` to connect them to those records.
 
-The `ADMIN` role belongs to the EVP application. It does not
-automatically give access to the Keycloak administration console.
+The application `ADMIN` role does not give access to the Keycloak
+administration console.
 
-The older `voter-test` account can still be used for basic login
-checks. It is not one of the four seeded demo voters.
+### Staff broker test account
 
-## 4. Staff passkey setup
+In `evp-staff`, create:
 
-The realm uses the browser flow `evp-browser-staff-mfa`.
+- Username: `staff-broker-test`
+- Email: `staff-broker-test@example.com`
+- First name: `Staff`
+- Last name: `Broker Test`
+- Email verified: Off
 
-The following roles include the helper role `REQUIRE_WEBAUTHN`:
+Set a local password with Temporary Off.
+Add `Webauthn Register` as a required user action for initial setup.
+
+Start login from the application and choose "Staff sign-in".
+Complete passkey registration when asked.
+
+The tested account has no voting or delegate role in `evp`.
+The application therefore shows:
+
+```text
+No voting or delegate access is assigned to this account.
+```
+
+That message is expected for this test account.
+
+Staff authentication and application permissions are separate.
+Role mapping for the final staff accounts still needs to be completed.
+
+## 5. Staff WebAuthn settings
+
+### Separate staff realm
+
+The `evp-staff` realm uses the browser flow `staff-webauthn`.
+
+Its forms flow contains:
+
+- Username Password Form: Required
+- Staff second-factor subflow: Required
+- WebAuthn Authenticator: Required
+- OTP Form: Disabled
+- Recovery Authentication Code Form: Disabled
+
+The export also contains the original condition executions inside
+the required second-factor subflow. Their configuration still needs
+review as part of the final flow review.
+
+The current setup uses a password followed by WebAuthn.
+It is not a passwordless-only login flow.
+
+### Earlier role-based checks in evp
+
+The `evp` realm still uses `evp-browser-staff-mfa`.
+
+These roles include the helper role `REQUIRE_WEBAUTHN`:
 
 - `DELEGATE`
 - `AEC_OFFICER`
 - `ADMIN`
 
-The browser flow checks for `REQUIRE_WEBAUTHN` after the
-username and password step.
+Its conditional second-factor flow uses:
 
-Inside the conditional second-factor flow:
+- Condition - user role: Required
+- Selected role: `REQUIRE_WEBAUTHN`
+- Negate output: Off
+- WebAuthn Authenticator: Required
+- Condition - user configured: Disabled
+- Condition - credential: Disabled
+- OTP Form: Disabled
+- Recovery Authentication Code Form: Disabled
 
-- Condition - user role is Required.
-- Its selected role is `REQUIRE_WEBAUTHN`.
-- Negate output is Off.
-- WebAuthn Authenticator is Required.
-- Condition - user configured is Disabled.
-- Condition - credential is Disabled.
-- OTP Form is Disabled.
-- Recovery Authentication Code Form is Disabled.
+The helper role selects the login check.
+It does not itself grant access to application features.
 
-The WebAuthn settings use:
+The `VOTER` role does not include it.
+Do not add it to the realm's default roles.
 
-- Relying party ID: `localhost`
-- User verification: Required
+The existing local staff route remains in place.
+The separate staff realm has not yet become the only staff login route.
 
-A staff user without a registered passkey is asked to register one.
+### Registering passkeys
 
-For the Windows demo:
+The local WebAuthn setup uses `localhost` as the relying party ID
+and requires user verification.
 
-1. Sign in through the application.
-2. On Passkey registration, click Register.
-3. Choose Windows Hello.
-4. Complete the fingerprint or device PIN check.
-5. If asked for a name, use a label such as
-   `delegate1-windows-hello`.
+For Windows Hello:
 
-The Windows Hello PIN is the device PIN. It is not the
-Keycloak account password.
+1. Start sign-in through the application.
+2. Choose Register on the passkey registration page.
+3. Select Windows Hello.
+4. Complete the device PIN or fingerprint check.
+5. Give the credential a useful label if asked.
 
-Each staff account needs its own passkey registration.
-A passkey registered for `delegate1` does not register one
-for `delegate2`.
+The Windows Hello PIN is not the Keycloak account password.
 
-The `VOTER` role does not include `REQUIRE_WEBAUTHN`.
-Do not add the helper role to the realm's default roles.
+Each account needs its own passkey registration.
 
-The helper role selects the login check. It is not intended
-to grant access to application features.
+For a virtual authenticator, use Chrome DevTools WebAuthn with:
 
-Staff and voters currently use the same `evp` realm.
-The staff check is selected by role, not by a separate staff realm.
+- Protocol: `ctap2`
+- Transport: `usb`
+- Supports resident keys: enabled
+- Supports user verification: enabled
 
-## 5. Start PostgreSQL and the backend
+Keep the test tab and virtual authenticator environment open.
+In our test, disabling and re-enabling that environment lost
+the virtual credentials.
 
-Follow the repository root README section "Running it for the demo"
-to prepare the database password, lookup secret, and signing key.
+A virtual authenticator is a test tool.
+It is not a permanent credential backup.
 
-Keep local passwords, secrets, and private keys out of Git.
+## 6. Start PostgreSQL and the backend
 
-From the repository root, start PostgreSQL:
+Follow the root README section "Running it for the demo" to prepare
+the database password, lookup secret, and signing key.
+
+Keep local secrets and private keys out of Git.
+
+From the repository root:
 
 ```powershell
 docker compose up -d db
 docker compose ps
 ```
 
-The database container should show `healthy`.
+The database should show `healthy`.
 
-Before starting Spring Boot, set the required environment variables
+Before starting Spring Boot, set these environment variables
 in the same PowerShell window:
 
 - `EVP_DB_PASSWORD`
@@ -211,15 +373,15 @@ in the same PowerShell window:
 - `EVP_TOKEN_KEY_PATH`
 - `EVP_ELECTION_DAY`
 
-For the demo voter records, also set:
+Enable the demo voter records:
 
 ```powershell
 $env:SPRING_PROFILES_ACTIVE = 'demo'
 ```
 
-The local `.env` file is used by Docker Compose.
-It does not automatically set variables for a separate
-Spring Boot process.
+Docker Compose reads the local `.env` file.
+A separately started Spring Boot process does not automatically
+load those variables from it.
 
 Start the backend:
 
@@ -228,14 +390,13 @@ cd backend
 .\mvnw.cmd spring-boot:run
 ```
 
-Keep this window open.
+Keep the window open.
 
 The backend runs at http://localhost:8080.
+The demo profile creates four voter records in PostgreSQL.
+Create the corresponding Keycloak accounts separately.
 
-The demo profile creates the four demo voter records.
-Keycloak accounts must still be created separately.
-
-## 6. Start the frontend
+## 7. Start the frontend
 
 Open another PowerShell window at the repository root:
 
@@ -245,93 +406,90 @@ npm.cmd ci
 npm.cmd run dev -- --port 5173 --strictPort
 ```
 
-Keep this window open.
+Open http://localhost:5173.
 
-Open http://localhost:5173 and click "Sign in with Keycloak".
+Click "Sign in with Keycloak".
 
-Sign in with one of the demo accounts.
+- For a local voter, enter the voter account details.
+- For the staff broker test, choose "Staff sign-in".
 
 The page should show the signed-in username.
 
-The frontend connects the access token to the shared API
-helper using `setAccessTokenProvider`.
+The frontend passes the access token to the shared API helper
+using `setAccessTokenProvider`.
 
-The current page shows the voting panel to users with `VOTER`
-and the change-request panel to users with `DELEGATE`.
+The voting panel is shown to users with `VOTER`.
+The change-request panel is shown to users with `DELEGATE`.
 
-An account with only `AEC_OFFICER` or `ADMIN` does not see
-those two panels. A message saying that voting or delegate
-access is not assigned is expected for these accounts.
+Hiding panels does not replace backend permission checks.
 
-Hiding a panel is not a replacement for backend access checks.
+Tokens are kept in memory.
+Refreshing the page clears local frontend authentication state,
+but does not end the Keycloak session.
 
-Tokens are kept in memory. Refreshing the page clears the
-frontend login state, but it does not end the Keycloak session.
+Use "Sign out" before testing a fresh login.
+An existing SSO session may otherwise complete login without
+asking for credentials again.
 
-Use "Sign out" to end the session.
+The shared app still has a placeholder for SEC-12 ballot encryption
+in this version. Successful login does not prove ballot encryption works.
 
-The shared app still has a placeholder for SEC-12 ballot
-encryption in this version. Do not treat a successful login
-as proof that ballot encryption is complete.
+## 8. Token and API checks
 
-## 7. How token checks work
+The frontend uses an ID token to identify the signed-in user.
+It uses an access token to call the backend.
 
-The project uses two types of tokens:
+Before storing the user, the frontend checks:
 
-- ID token: tells the frontend who signed in.
-- Access token: allows the frontend to call the backend.
+- ID token signature.
+- Issuer.
+- Audience.
+- Expiry.
+- Nonce.
+- Subject.
+- Issue time.
+- Token lifetime.
+- Authorized party when needed.
 
-### Frontend checks
+Failed validation prevents storage and clears the previous local user.
 
-Before saving the signed-in user, the frontend checks:
+The backend checks access-token signature, issuer, timestamps,
+and the `evp-backend` audience.
 
-- The ID token signature.
-- The issuer: the Keycloak realm that created the token.
-- The audience: the client the token is meant for.
-- The expiry time.
-- The nonce: a random value linked to the sign-in attempt.
-- The user ID and token issue time.
-- The token lifetime and authorized party when needed.
+Application issuer:
 
-If a check fails, the frontend does not save the user.
-It also removes any previous local user.
+```text
+http://localhost:8081/realms/evp
+```
 
-### Backend checks
+This stays the same for brokered staff login.
 
-The frontend sends the access token in the Authorization header.
-
-The backend checks its RS256 signature, issuer, timestamps,
-and `evp-backend` audience.
-
-The shared security configuration keeps these public endpoints:
+Public API endpoints:
 
 - GET `/api/health`
 - POST `/api/public/enrolment-check`
 - GET `/api/tokens/public-key`
 - POST `/api/ballots`
 
-Public access does not mean that the endpoint accepts any input.
-The ballot endpoint still checks the submitted voting token
+The public ballot endpoint still checks its voting token
 and request through the ballot service.
 
-GET `/api/me` needs a valid access token.
+GET `/api/me` requires authentication.
+Other `/api/**` routes require authentication, with additional
+method-level role checks where implemented.
 
-Other `/api/**` requests require authentication.
-Some endpoints also check roles using method-level security.
+The backend maps `realm_access.roles` to authorities starting
+with `ROLE_`.
 
-The backend reads realm roles from `realm_access.roles`.
-It maps them to Spring Security authorities with the `ROLE_` prefix.
+CORS allows the local frontend origin.
+The current allowed methods are GET, POST, and OPTIONS.
 
-CORS allows the configured local frontend origin.
-The current configuration allows GET, POST, and OPTIONS.
+The API uses bearer tokens rather than a server-side login session.
 
-The API uses bearer tokens and does not use a server-side
-login session.
+## 9. Frontend client settings
 
-## 8. Keycloak client settings
+In `evp`:
 
-- Realm: `evp`
-- Issuer: `http://localhost:8081/realms/evp`
 - Client ID: `evp-frontend`
 - Client type: Public
 - Standard flow: Enabled
@@ -343,21 +501,16 @@ login session.
 - Web origin: `http://localhost:5173`
 - Backend audience: `evp-backend`
 
-The export includes the `evp-backend-audience` mapper.
-It adds `evp-backend` to access tokens, not ID tokens.
+The `evp-backend-audience` mapper adds the backend audience
+to access tokens, not ID tokens.
 
-### Add the audience mapper to an older setup
+If an older setup is missing the mapper:
 
-Only follow these steps if your existing realm does not
-already have this mapper.
+1. Open Clients > `evp-frontend`.
+2. Open Client scopes > `evp-frontend-dedicated` > Mappers.
+3. Add an Audience mapper.
 
-1. Open Clients and select `evp-frontend`.
-2. Open Client scopes.
-3. Select `evp-frontend-dedicated`.
-4. Open Mappers.
-5. Choose Configure a new mapper, or Add mapper > By configuration.
-6. Select Audience.
-7. Enter these settings:
+Use:
 
 | Setting | Value |
 | --- | --- |
@@ -369,110 +522,63 @@ already have this mapper.
 | Add to lightweight access token | Off |
 | Add to token introspection | On |
 
-Save the mapper. Sign out of the frontend and sign in again
-to get a new token.
+Do not create a duplicate if it already exists.
+Sign out and sign in again after changing token mappers.
 
-If the mapper already exists, check its settings.
-Do not create another copy.
+## 10. Automated tests
 
-## 9. Run the tests
-
-### Backend tests
-
-Open PowerShell at the repository root:
+From the repository root, run backend tests:
 
 ```powershell
 cd backend
 .\mvnw.cmd test
 ```
 
-The identity tests are under:
+Identity tests are under:
 
 ```text
 backend/src/test/java/com/evp/identity/
 ```
 
-They cover:
+They cover application startup, API access, returned identity and roles,
+blocked methods, voter restrictions, auditor access, and JWT validation.
 
-- Application startup.
-- Public and protected API access.
-- Missing and malformed access tokens.
-- Returned user details and roles.
-- A blocked HTTP method.
-- Voter restrictions and auditor read-only access.
-- JWT signature, expiry, issuer, and audience checks.
-
-Some API and role tests use simulated authentication.
+Some tests use simulated authentication.
 They do not prove that a real Keycloak token was validated.
 
-The JWT validation tests use temporary RSA keys and signed tokens.
-They check:
+The signed JWT tests check valid tokens and reject wrong signatures,
+expired tokens, wrong issuers, and wrong audiences.
 
-- A valid token is accepted.
-- A wrong signature is rejected.
-- An expired token is rejected.
-- A wrong issuer is rejected.
-- A wrong audience is rejected.
-
-The shared backend tests also cover the other team members'
-implemented features.
-
-### Frontend tests
-
-Open PowerShell at the repository root:
+In another PowerShell window at the repository root:
 
 ```powershell
 cd frontend
 npm.cmd ci
 npm.cmd test
-```
-
-The last reported frontend run passed 27 tests across seven files.
-
-The identity part contains 12 tests.
-
-Seven tests use signed test tokens to check:
-
-- A valid token is accepted.
-- A wrong signature is rejected.
-- A wrong issuer is rejected.
-- A wrong audience is rejected.
-- A wrong nonce is rejected.
-- An expired token is rejected.
-- A token without an expiry time is rejected.
-
-Five tests simulate the verification result and check
-the user manager and storage:
-
-- The user is saved after successful verification.
-- The user is not saved while verification is still running.
-- Failed verification removes a previous local user.
-- Missing nonce state is rejected.
-- A different user ID is rejected.
-
-### Build and lint
-
-From the frontend folder:
-
-```powershell
 npm.cmd run build
 npm.cmd run lint
 ```
 
-Both checks passed in the last reported run.
+The last reported frontend run passed 27 tests across seven files.
+Build and lint also passed.
+
+The identity part contains 12 frontend tests:
+
+- Seven signed-token validation tests.
+- Five user-manager and storage tests.
 
 The build reported a browser compatibility warning about the
-`crypto` import in the blind RSA dependency. A successful build
-alone does not prove that the full browser voting flow works.
+`crypto` import in the blind RSA dependency.
+A successful build does not prove the complete voting flow works.
 
-The automated tests do not replace the manual WebAuthn checks.
+These automated checks do not replace manual WebAuthn testing.
+They were not a fresh automated test of the latest broker exports.
 
-## 10. Manual API checks
+## 11. Manual API checks
 
-Keep the backend running.
-Use another PowerShell window for these commands.
+Keep the backend running and use a separate PowerShell window.
 
-Check the public endpoint:
+Public endpoint:
 
 ```powershell
 curl.exe -i http://localhost:8080/api/health
@@ -480,7 +586,7 @@ curl.exe -i http://localhost:8080/api/health
 
 Expected: HTTP 200 with `{"status":"UP"}`.
 
-Check the protected endpoint without a token:
+Protected endpoint without a token:
 
 ```powershell
 curl.exe -i http://localhost:8080/api/me
@@ -488,7 +594,7 @@ curl.exe -i http://localhost:8080/api/me
 
 Expected: HTTP 401.
 
-Check it with a malformed token:
+Malformed token:
 
 ```powershell
 curl.exe -i -H "Authorization: Bearer invalid-token" http://localhost:8080/api/me
@@ -496,153 +602,174 @@ curl.exe -i -H "Authorization: Bearer invalid-token" http://localhost:8080/api/m
 
 Expected: HTTP 401.
 
-For a valid request, sign in through the frontend.
-The signed-in page requests `/api/me` through the shared API helper.
+For authenticated access, sign in through the frontend.
+The page calls `/api/me` using the shared API helper.
 
-The response contains:
+The response includes:
 
-- `subject`: the user's unique Keycloak ID.
-- `username`: the preferred username.
-- `roles`: the roles mapped by the backend.
+- `subject`
+- `username`
+- `roles`
 
-The current shared page does not use the old
-"Check protected API" button.
+The current page does not use the earlier "Check protected API" button.
 
-## 11. Manual staff login checks
+## 12. Earlier local staff tests in evp
 
-The following checks were completed on the local setup:
+These checks were completed before the separate staff broker setup:
 
-| Account | Role | Result |
-| --- | --- | --- |
-| `delegate1` | `DELEGATE` | Windows Hello was requested and sign-in succeeded |
-| `delegate2` | `DELEGATE` | A virtual passkey was registered and a later sign-in succeeded using it |
-| `officer1` | `AEC_OFFICER` | Passkey registration was requested, and a later sign-in required Windows Hello |
-| `admin-test` | `ADMIN` | Passkey registration was requested, and a later sign-in required Windows Hello |
-| `voter1` | `VOTER` | Sign-in succeeded with the password without a passkey prompt |
+| Account | Result |
+| --- | --- |
+| `delegate1` | Windows Hello was requested and login succeeded |
+| `delegate2` | Virtual passkey registration and later login succeeded |
+| `officer1` | Registration and later Windows Hello login succeeded |
+| `admin-test` | Registration and later Windows Hello login succeeded |
+| `voter1` | Password login succeeded without a passkey prompt |
 
-The staff checks used Sign out before starting another sign-in.
+Cancelling Windows Hello for `delegate1` produced Passkey Error.
+Completing the check on retry allowed login.
 
-For `delegate1`, cancelling the Windows Hello check showed
-a Passkey Error and did not complete sign-in.
-Retrying and completing the check allowed sign-in.
+The `delegate1` and `voter1` checks were repeated after
+the helper-role condition was introduced.
 
-The `delegate1` and `voter1` checks were repeated after the
-condition was changed to use `REQUIRE_WEBAUTHN`.
+### Virtual authenticator
 
-The following `delegate2` checks were performed on
-27 October 2026, using the main local Keycloak instance
-at port 8081 and the frontend at port 5173.
+For `delegate2`, a virtual passkey named `delegate2-virtual-test`
+was registered.
 
-### Virtual authenticator sign-in
-
-We used Chrome DevTools WebAuthn to create a virtual authenticator
-with these settings:
-
-- Protocol: `ctap2`
-- Transport: `usb`
-- Supports resident keys: enabled
-- Supports user verification: enabled
-
-We registered a passkey for `delegate2` with the label
-`delegate2-virtual-test`.
-
-We then signed out and started another sign-in.
-After entering the username and password, Keycloak showed
-Passkey login.
-
-Selecting "Sign in with Passkey" completed sign-in.
+After sign-out, another login required the password and passkey.
 The application showed `Signed in as: delegate2`.
-The virtual credential's signature count increased from 1 to 3.
+The recorded signature count increased from 1 to 3.
 
-Result: sign-in using a registered virtual authenticator succeeded.
+### Password-only attempt
 
-### Password without completed WebAuthn
+In a fresh Incognito window without a virtual authenticator,
+the correct password still led to a passkey prompt.
 
-We signed out and opened the application in a fresh Chrome
-Incognito window, without enabling virtual authenticators there.
+Cancelling verification produced Passkey Error.
+That login attempt did not complete.
 
-After entering the correct `delegate2` password, Keycloak
-still required the registered passkey.
+### OTP fallback check
 
-We started the passkey check and cancelled it.
-Keycloak showed Passkey Error, and sign-in did not complete.
+Configure OTP was temporarily added as a required action
+for `delegate2`.
 
-Result: the correct password alone did not complete this
-staff sign-in attempt.
+After successful passkey authentication, OTP setup was completed.
+The account then had Password, Webauthn, and Otp credentials.
 
-### OTP did not provide a replacement for WebAuthn
+A fresh login still required a passkey and offered no OTP alternative.
+Cancelling the passkey check did not complete login.
 
-For this test only, we added Configure OTP as a required
-action for `delegate2`.
+No TOTP code was submitted during that login attempt.
+This checked that OTP was not offered as a fallback.
+It was not a direct test of a submitted TOTP code being rejected.
 
-We signed in using the registered passkey first, then completed
-OTP setup using an authenticator app.
+These checks apply to the earlier `evp` flow.
+They do not establish the same result for every staff-realm route.
 
-The Keycloak Credentials page showed all three:
+The WebAuthn check for `delegate3` has not been recorded as completed.
 
-- Password
-- Webauthn
-- Otp
+## 13. Staff broker tests
 
-We signed out and started another sign-in in a fresh
-Incognito window.
+The following checks used the local instance on 27 October 2026:
 
-After the correct password, Keycloak still showed Passkey login.
-There was no option on that page to use an OTP code instead.
+- Frontend: `http://localhost:5173`
+- Keycloak: `http://localhost:8081`
+- Staff account: `staff-broker-test` in `evp-staff`
+- Identity provider: `evp-staff` in `evp`
 
-We cancelled the passkey check.
-Keycloak showed Passkey Error, and sign-in did not complete.
+### Registration and login
 
-Result: having OTP registered did not provide a way to replace
-WebAuthn in the browser login flow we tested.
+We selected "Staff sign-in" and registered a virtual passkey.
 
-We did not submit a TOTP code during this login attempt because
-the flow did not offer an OTP form. This was a manual check
-that OTP was not available as a fallback, not a direct test
-of a submitted TOTP code being rejected.
+The first broker attempt failed during the user-info request.
+The log reported an issuer mismatch between ports 8080 and 8081.
 
-Configure OTP was used to prepare the test account.
-We did not enable OTP Form in the staff authentication flow.
+Setting the `evp-staff` Frontend URL to `http://localhost:8081`
+resolved the observed mismatch.
 
-### Test setup note
+Login then reached the application as `staff-broker-test`.
 
-An earlier attempt selected an empty virtual authenticator
-while other virtual authenticators were still present.
+### Fresh passkey login
 
-Sign-in succeeded, but an existing credential's signature
-count increased from 3 to 4. The empty authenticator remained
-empty.
+We signed out and started another staff login.
 
-We did not count that attempt as a successful rejection test.
-We repeated the cancellation checks in fresh Incognito windows
-without enabling the virtual authenticator environment there.
+After the password, Keycloak showed Passkey login.
+Selecting "Sign in with Passkey" completed login.
+
+The recorded credential signature count increased from 1 to 2.
+
+This confirmed a fresh login using the virtual passkey.
+
+### Logout
+
+The first logout attempt showed "Invalid redirect uri".
+
+We added this post-logout redirect URI to `evp-staff-broker`:
+
+```text
+http://localhost:8081/realms/evp/broker/evp-staff/endpoint/logout_response
+```
+
+Logout then returned to the application sign-in page.
+
+Starting staff login again showed the username and password form.
+
+### Cancelled passkey check
+
+After entering the correct password, we cancelled the passkey check.
+
+Keycloak showed Passkey Error.
+That login attempt did not reach the application.
+
+This demonstrates the tested password-only attempt did not complete.
+It does not prove that all alternative authentication routes are blocked.
+
+A separate OTP fallback check for this staff broker account
+has not been completed.
+
+### Virtual credential recovery
+
+During the cancellation test, the DevTools virtual authenticator
+environment was disabled.
+
+Re-enabling it left the virtual credential tables empty.
+
+We recovered the test account by:
+
+1. Adding `Webauthn Register` as a required action.
+2. Removing only the unavailable old WebAuthn credential.
+3. Keeping the account password.
+4. Registering a replacement passkey named `staff-broker-virtual-v2`.
+
+After registration, we signed out and tested login again.
+Keycloak requested a passkey and login succeeded.
+
+This was a test-account recovery through the admin console.
+It was not an application self-service recovery feature.
+
+Previously registered virtual credentials on other accounts may also
+need replacement if their virtual authenticator data was lost.
 
 ### Evidence
 
 Screenshots were captured for:
 
-- Successful virtual authenticator sign-in and the signature count.
-- The passkey prompt after entering the correct password.
-- Passkey Error after cancelling verification.
-- The passkey prompt after OTP was registered.
-- Passkey Error after cancellation with OTP registered.
-- The account's Password, Webauthn, and Otp credential list.
+- Passkey registration.
+- Successful staff broker login.
+- The passkey prompt.
+- The signature count after authentication.
+- Logout returning to the application.
+- A fresh username and password prompt after logout.
+- Passkey Error after cancellation.
+- The replacement WebAuthn credential.
 
-Do not include passwords, OTP setup QR codes, OTP secrets,
-private keys, or tokens in screenshots committed to Git.
+Keep passwords, tokens, OTP setup QR codes, and private keys
+out of screenshots committed to Git.
 
-These results describe the tested accounts and browser flow.
-They do not prove that every SEC-02 requirement or every
-authentication route has been checked.
+## 14. Manual PKCE test
 
-The WebAuthn check for `delegate3` has not been recorded
-as completed.
-
-## 12. Manual PKCE test
-
-We started a sign-in attempt and changed one character in its
-saved `code_verifier` in browser session storage. We kept the
-same sign-in request and completed the login.
+For an earlier application login test, we changed one character
+in the saved `code_verifier` in browser session storage.
 
 Keycloak rejected the token request with HTTP 400:
 
@@ -655,86 +782,99 @@ Keycloak rejected the token request with HTTP 400:
 
 The frontend showed "Sign-in could not be completed".
 
-We then started a new sign-in attempt without changing anything.
-Sign-in worked, and `/api/me` returned HTTP 200 with the test
-user's ID and username.
+A new attempt without changes succeeded.
+`/api/me` returned HTTP 200 with the user's ID and username.
 
-Result: the incorrect PKCE verifier was rejected, and a new
-normal sign-in still worked.
+This tested the frontend-to-evp PKCE flow.
 
-This was a manual test.
+The staff broker is configured to use S256 too, but a separate
+tampered-verifier test for the broker connection has not been performed.
 
-## 13. Save changes to the realm settings
+## 15. Export configuration changes
 
-After changing Keycloak settings:
+Export both realms after changing their settings.
 
-1. Select the `evp` realm.
-2. Open Realm settings.
-3. Open Action > Partial export.
-4. Turn Include groups and roles On.
-5. Turn Include clients On.
-6. Click Export.
-7. Check the downloaded file.
-8. Copy it to `keycloak/evp-realm.json`.
-9. Review the Git diff before committing.
+For each realm:
 
-The latest exported file was checked for:
+1. Select the realm.
+2. Open Realm settings > Action > Partial export.
+3. Enable Include groups and roles.
+4. Enable Include clients.
+5. Click Export.
+6. Check the `realm` value in the downloaded JSON.
+7. Copy it to the matching repository file.
+8. Review the Git diff.
 
-- The `evp-browser-staff-mfa` browser flow.
-- The `REQUIRE_WEBAUTHN` condition.
-- The helper role linked to `DELEGATE`, `AEC_OFFICER`, and `ADMIN`.
-- Required WebAuthn user verification.
-- Disabled OTP and recovery-code steps inside the staff second-factor flow.
+Use:
 
-The original realm export was successfully imported into a
-separate, fresh Keycloak 26.8.1 container.
-Its discovery endpoint returned the expected issuer.
+| Realm | Repository file |
+| --- | --- |
+| `evp` | `keycloak/evp-realm.json` |
+| `evp-staff` | `keycloak/evp-staff-realm.json` |
 
-The updated export containing the staff MFA settings was also
-imported successfully into a fresh Keycloak 26.8.1 test container.
-The discovery endpoint returned:
+The latest exports were checked for:
+
+- The correct realm names.
+- The enabled `evp-staff` identity provider.
+- Broker URLs and issuer.
+- Signature verification and JWKS settings.
+- Broker S256 PKCE settings.
+- The confidential `evp-staff-broker` client.
+- Login and logout redirect URIs.
+- The `staff-webauthn` browser flow.
+- Masked client secrets.
+
+The exports contain configuration, not users or passkeys.
+They are not complete backups.
+
+A new setup must create users, register passkeys, and configure
+a matching broker client secret.
+
+### Import tests already completed
+
+Earlier `evp` exports were imported successfully into fresh
+Keycloak 26.8.1 test containers.
+
+The updated role-based MFA export also passed import.
+Its discovery endpoint returned:
 
 ```text
 http://localhost:8082/realms/evp
 ```
 
-This checked the import and discovery endpoint.
-The manual login tests were performed on the main local
-Keycloak instance at port 8081.
+Those checks covered the earlier export, not the latest pair
+containing the completed broker connection.
 
-The export does not include the virtual passkey or OTP
-credential added to `delegate2` during testing.
+The latest pair still needs a fresh import and setup test.
 
-## 14. Work still needed
+## 16. Work still needed
 
-This is a local demo using Keycloak's development mode and
-development database. It is not ready for production.
-
+This is a local development demo.
+Keycloak uses `start-dev` and its development database.
 PostgreSQL stores the application data.
-The current Keycloak container uses its own development database.
 
-The JSON file is a partial configuration export.
-It is not a full backup and does not include user accounts
-or their passkeys.
+Remaining work includes:
 
-Work still needed includes:
-
-- Finish checking all SEC-01 requirements.
-- Review the remaining SEC-02 acceptance requirements and test coverage.
-- Confirm how the SEC-02 "staff realm" wording applies to our shared
-  `evp` realm with role-based staff checks.
-- Finish the full role and permission rules for SEC-03.
+- Finish checking all SEC-01 acceptance requirements.
+- Finish reviewing the staff browser flow.
+- Complete staff application role mapping.
+- Decide how existing local staff accounts move to the staff realm.
+- Ensure the intended staff authentication route cannot be bypassed.
+- Review first broker login and account-linking behaviour.
+- Complete the separate staff-realm OTP fallback checks.
+- Test the latest pair of exports on a fresh setup.
+- Finish SEC-03 role and permission coverage.
 - Add DPoP.
-- Complete the session security requirements.
+- Complete session security requirements.
 - Add rate limiting.
 
-Some role checks and staff MFA are now implemented and tested,
-but the full identity and access work is not complete.
+SSO can reuse existing sessions.
+Policy changes do not by themselves prove that all existing sessions
+have been rechecked.
 
-Existing Keycloak sessions can be reused through SSO.
-The manual tests above used sign-out first.
-Session behaviour after a role or policy change still needs review.
+The API currently disables CSRF protection because authentication
+uses bearer tokens rather than cookies.
+Review this if cookie-based authentication is introduced.
 
-CSRF protection is currently disabled because the API uses
-bearer tokens only. This must be reviewed if cookie-based
-authentication is added.
+The successful tests describe the accounts and routes tested.
+The full identity and access scope is not yet complete.
