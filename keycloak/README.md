@@ -583,10 +583,14 @@ The original realm export was successfully imported into a
 separate, fresh Keycloak 26.8.1 container.
 Its discovery endpoint returned the expected issuer.
 
-The latest export containing the staff MFA changes still needs
-a fresh import test. The earlier import test does not validate
-these new changes.
+The updated export containing the staff MFA settings was also
+imported successfully into a fresh Keycloak 26.8.1 test container.
+The discovery endpoint returned:
+http://localhost:8082/realms/evp
 
+This checked the import and discovery endpoint.
+The Windows Hello login tests were performed on the main
+local Keycloak instance at port 8081.
 ## 14. Work still needed
 
 This is a local demo using Keycloak's development mode and
@@ -603,7 +607,6 @@ Work still needed includes:
 
 - Finish checking all SEC-01 requirements.
 - Complete the remaining SEC-02 checks and document their results.
-- Test the updated realm export in a fresh setup.
 - Finish the full role and permission rules for SEC-03.
 - Add DPoP.
 - Complete the session security requirements.
