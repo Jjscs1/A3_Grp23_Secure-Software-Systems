@@ -1,0 +1,23 @@
+# Local PostgreSQL 16 for development and the demo.
+#   cp .env.example .env    (then fill in the values)
+#   docker compose up -d
+# Bound to 127.0.0.1 only, so the database is not reachable from the network.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: evp
+      POSTGRES_USER: evp
+      POSTGRES_PASSWORD: ${EVP_DB_PASSWORD:?Set EVP_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - evp-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evp -d evp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  evp-db:
