@@ -66,11 +66,17 @@ class BoundSessionIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired MutableClock clock;
     @Autowired BoundSessionRepository records;
+    @Autowired CastChallengeRepository challenges;
+    @Autowired com.evp.voter.VoterRepository voters;
+    @Autowired com.evp.token.BlindSigner blindSigner;
+    @Autowired com.fasterxml.jackson.databind.ObjectMapper json;
     String sid;
     String token;
     String id;
     @BeforeEach void setup() throws Exception {
         records.deleteAll();
+        challenges.deleteAll();
+        voters.deleteAll();
         clock.time = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
         sid = UUID.randomUUID().toString();
         token = signed(false, "voter", "evp-backend", clock.time, 600);
@@ -80,7 +86,7 @@ class BoundSessionIntegrationTests {
         var builder = new JWTClaimsSet.Builder().issuer(ISSUER).subject(subject).audience(audience)
             .issueTime(Date.from(Instant.now())).expirationTime(Date.from(Instant.now().plusSeconds(ttl)))
             .jwtID(UUID.randomUUID().toString()).claim("sid", sid)
-            .claim("preferred_username", "voter1");
+            .claim("preferred_username", "voter1").claim("realm_access", Map.of("roles", List.of("VOTER")));
         if (identity) builder.claim("auth_time", authTime.getEpochSecond());
         else builder.claim("cnf", Map.of("jkt", device.computeThumbprint().toString()));
         var jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("sessions").build(), builder.build());
@@ -202,4 +208,109 @@ class BoundSessionIntegrationTests {
         mvc.perform(post("/api/ballots").contentType("application/json").content("{}"))
             .andExpect(status().isBadRequest()); // Reached validation, not blocked by session/auth.
     }
+    String challenge(Cookie cookie) throws Exception {
+        var result = mvc.perform(request("POST", "/api/session/prepare-cast").cookie(cookie))
+            .andExpect(status().isOk()).andReturn();
+        return json.readTree(result.getResponse().getContentAsString()).get("nonce").asText();
+    }
+    void freshIdentity(String nonce) throws Exception {
+        clock.time = clock.time.plusSeconds(2);
+        token = signed(false, "voter", "evp-backend", clock.time, 600);
+        id = signed(true, "voter", "evp-frontend", clock.time, 600);
+        var original = SignedJWT.parse(id);
+        var claims = new HashMap<String,Object>(original.getJWTClaimsSet().toJSONObject());
+        claims.put("nonce", nonce);
+        var updated = new SignedJWT(original.getHeader(), JWTClaimsSet.parse(claims));
+        updated.sign(new RSASSASigner(signing));
+        id = updated.serialize();
+    }
+    @Test void ordinaryLoginCannotIssueVotingToken() throws Exception {
+        Cookie cookie = open();
+        mvc.perform(request("POST", "/api/tokens").cookie(cookie).contentType("application/json")
+                .content("{\"division\":\"MELBOURNE\",\"blindedMessage\":\"AQ==\"}"))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("REAUTH_REQUIRED"));
+        mvc.perform(request("GET", "/api/me").cookie(cookie)).andExpect(status().isOk());
+    }
+    @Test void challengeClosesOldSessionAndNeedsNewAuthentication() throws Exception {
+        Cookie old = open();
+        String nonce = challenge(old);
+        mvc.perform(request("GET", "/api/me").cookie(old)).andExpect(status().isUnauthorized());
+        freshIdentity(nonce);
+        Cookie fresh = open();
+        mvc.perform(request("GET", "/api/session/status").cookie(fresh))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.castReady").value(true));
+    }
+    @Test void randomNonceDoesNotGrantCasting() throws Exception {
+        Cookie old = open(); challenge(old);
+        freshIdentity("not-the-server-challenge");
+        Cookie fresh = open();
+        mvc.perform(request("GET", "/api/session/status").cookie(fresh))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.castReady").value(false));
+    }
+    @Test void challengeCannotBeUsedTwiceForNewAuthenticationEvents() throws Exception {
+        String nonce = challenge(open());
+        freshIdentity(nonce); open();
+        freshIdentity(nonce);
+        mvc.perform(start()).andExpect(status().isForbidden());
+    }
+    @Test void staleChallengeIsRejected() throws Exception {
+        String nonce = challenge(open());
+        clock.time = clock.time.plusSeconds(181);
+        freshIdentity(nonce);
+        mvc.perform(start()).andExpect(status().isForbidden());
+    }
+    @Test void failedEligibilityRollsBackSessionClosure() throws Exception {
+        String nonce = challenge(open()); freshIdentity(nonce);
+        Cookie fresh = open();
+        mvc.perform(request("POST", "/api/tokens").cookie(fresh).contentType("application/json")
+                .content("{\"division\":\"MELBOURNE\",\"blindedMessage\":\"AQ==\"}"))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("NOT_ELIGIBLE"));
+        mvc.perform(request("GET", "/api/me").cookie(fresh)).andExpect(status().isOk());
+    }
+    @Test void successfulIssuanceClosesSessionBeforeAnonymousCast() throws Exception {
+        String nonce = challenge(open()); freshIdentity(nonce);
+        Cookie fresh = open();
+        voters.saveAndFlush(com.evp.voter.Voter.enrol("voter1", "test-lookup", LocalDate.of(1990, 1, 1), true, "MELBOURNE"));
+        var pub = (java.security.interfaces.RSAPublicKey) java.security.KeyFactory.getInstance("RSA")
+            .generatePublic(new java.security.spec.X509EncodedKeySpec(blindSigner.publicKeySpki()));
+        var client = new com.evp.token.TestBlindClient(pub);
+        byte[] serial = new byte[32]; new java.security.SecureRandom().nextBytes(serial);
+        var blind = client.blind(serial);
+        String body = json.writeValueAsString(Map.of("division", "MELBOURNE", "blindedMessage",
+            Base64.getEncoder().encodeToString(blind.blindedMessage())));
+        var result = mvc.perform(request("POST", "/api/tokens").cookie(fresh).contentType("application/json").content(body))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("Max-Age=0"))).andReturn();
+        byte[] signature = client.finalizeSignature(Base64.getDecoder().decode(
+            json.readTree(result.getResponse().getContentAsString()).get("blindSignature").asText()), blind.inverse());
+        mvc.perform(request("GET", "/api/me").cookie(fresh)).andExpect(status().isUnauthorized());
+        // Test fixture envelope: this verifies IAM/anonymous transport, not SEC-12 encryption.
+        mvc.perform(post("/api/ballots").contentType("application/json").content(json.writeValueAsString(Map.of(
+            "serial", Base64.getEncoder().encodeToString(serial),
+            "signature", Base64.getEncoder().encodeToString(signature), "encryptedBallot", "test-envelope"))))
+            .andExpect(status().isCreated());
+        mvc.perform(request("GET", "/api/me").cookie(fresh)).andExpect(status().isUnauthorized());
+        mvc.perform(start().cookie(fresh)).andExpect(status().isUnauthorized());
+    }
+
+    @Test void preparationPermissionExpiresEvenWhileSessionIsStillActive() throws Exception {
+        String nonce = challenge(open()); freshIdentity(nonce);
+        Cookie fresh = open();
+        clock.time = clock.time.plusSeconds(61);
+        mvc.perform(request("POST", "/api/tokens").cookie(fresh).contentType("application/json")
+                .content("{\"division\":\"MELBOURNE\",\"blindedMessage\":\"AQ==\"}"))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("REAUTH_REQUIRED"));
+        mvc.perform(request("GET", "/api/me").cookie(fresh)).andExpect(status().isOk());
+    }
+    @Test void signingFailureRollsBackVoterFlagAndSessionClosure() throws Exception {
+        String nonce = challenge(open()); freshIdentity(nonce);
+        Cookie fresh = open();
+        var voter = voters.saveAndFlush(com.evp.voter.Voter.enrol("voter1", "test-lookup", LocalDate.of(1990, 1, 1), true, "MELBOURNE"));
+        mvc.perform(request("POST", "/api/tokens").cookie(fresh).contentType("application/json")
+                .content("{\"division\":\"MELBOURNE\",\"blindedMessage\":\"AQ==\"}"))
+            .andExpect(status().isBadRequest());
+        assertFalse(voters.findById(voter.getId()).orElseThrow().hasVoted());
+        mvc.perform(request("GET", "/api/me").cookie(fresh)).andExpect(status().isOk());
+    }
+
 }

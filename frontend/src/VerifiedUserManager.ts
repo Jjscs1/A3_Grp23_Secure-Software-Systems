@@ -6,7 +6,7 @@ export class VerifiedUserManager extends UserManager {
   override async signinRedirect(
     args: SigninRedirectArgs = {},
   ): Promise<void> {
-    const nonce = crypto.randomUUID()
+    const nonce = args.nonce ?? crypto.randomUUID()
 
     await super.signinRedirect({
       ...args,

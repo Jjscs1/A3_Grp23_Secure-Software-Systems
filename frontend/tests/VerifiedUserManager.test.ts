@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   InMemoryWebStorage,
   User,
+  UserManager,
   WebStorageStateStore,
 } from 'oidc-client-ts'
 import type { JWTPayload } from 'jose'
@@ -135,4 +136,14 @@ describe('VerifiedUserManager storage protection', () => {
 
     expect(await manager.getUser()).toBeNull()
   })
+})
+it('sends the server casting nonce and saves it for callback verification', async () => {
+  const redirect = vi.spyOn(UserManager.prototype, 'signinRedirect').mockResolvedValue(undefined)
+  try {
+    await manager.signinRedirect({ nonce: 'server-challenge', prompt: 'login', max_age: 0 })
+    expect(redirect).toHaveBeenCalledWith(expect.objectContaining({
+      nonce: 'server-challenge', state: { expectedNonce: 'server-challenge' },
+      prompt: 'login', max_age: 0,
+    }))
+  } finally { redirect.mockRestore() }
 })

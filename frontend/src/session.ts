@@ -1,13 +1,15 @@
 import { apiFetch } from './api/http'
 
 let openingToken: string | undefined
-let opening: Promise<void> | undefined
+export interface SessionState { castReady: boolean }
+let opening: Promise<SessionState> | undefined
 
 // StrictMode mounts effects twice. Only one bootstrap request is made per access token.
-export function startSession(token: string, idToken: string): Promise<void> {
+export function startSession(token: string, idToken: string): Promise<SessionState> {
   if (openingToken !== token || !opening) {
     openingToken = token
     opening = apiFetch<void>('/api/session/start', { method: 'POST', json: { idToken } })
+      .then(() => apiFetch<SessionState>('/api/session/status'))
   }
   return opening
 }

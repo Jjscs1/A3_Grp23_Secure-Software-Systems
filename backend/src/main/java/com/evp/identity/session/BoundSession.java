@@ -17,6 +17,8 @@ public class BoundSession {
     Instant expiresAt;
     Instant lastActivity;
     boolean revoked;
+    Instant authenticatedAt;
+    Boolean castVerified = false;
     @Version Long version;
     protected BoundSession() {}
     BoundSession(String id, String cookieHash, String tokenHash, Instant expiresAt, Instant now) {

@@ -1,6 +1,6 @@
 import { userManager } from './oidcUserManager'
 import { startSession, watchIdle } from './session'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from 'react-oidc-context'
 import { ApiError, apiFetch, setAccessTokenProvider, setDPoPProofProvider } from './api/http'
 import {
@@ -9,7 +9,8 @@ import {
 } from './components/CandidateList'
 import { ChangeRequestPanel } from './components/ChangeRequestPanel'
 import { EnrolmentCheckForm } from './components/EnrolmentCheckForm'
-import { VotingPanel } from './components/VotingPanel'
+import { VotingPanel, type AnonymousBallot } from './components/VotingPanel'
+import { AnonymousCastPanel } from './components/AnonymousCastPanel'
 
 const DIVISION = 'MELBOURNE'
 
@@ -22,13 +23,12 @@ interface UserInfo {
 // Temporary placeholder from the shared app.
 // SEC-12's owner must replace this with actual ballot encryption.
 async function pendingSec12Envelope(): Promise<string> {
-  return JSON.stringify({
-    alg: 'pending-SEC-12',
-    note: 'replace with the client-side encryption envelope',
-  })
+  throw new Error('SEC-12 ballot encryption is not connected yet.')
 }
 
-function SignedInPanels() {
+function SignedInPanels({ castReady, reauthenticate, onReady }: {
+  castReady: boolean; reauthenticate: () => Promise<void>; onReady: (ballot: AnonymousBallot) => void
+}) {
   const [candidates, setCandidates] = useState<CandidateView[]>([])
   const [candidateError, setCandidateError] = useState('')
   const [roles, setRoles] = useState<string[]>([])
@@ -105,6 +105,9 @@ function SignedInPanels() {
             <VotingPanel
               division={DIVISION}
               buildEncryptedBallot={pendingSec12Envelope}
+              castReady={castReady}
+              reauthenticate={reauthenticate}
+              onReady={onReady}
             />
           )}
 
@@ -125,6 +128,13 @@ export function App() {
   const auth = useAuth()
   const [actionError, setActionError] = useState('')
   const [readyToken, setReadyToken] = useState<string | undefined>()
+  const [castReady, setCastReady] = useState(false)
+  const [anonymousBallot, setAnonymousBallot] = useState<AnonymousBallot | null>(null)
+  const [receipt, setReceipt] = useState('')
+  const finishCast = useCallback((message: string) => {
+    setAnonymousBallot(null)
+    setReceipt(message)
+  }, [])
 
   const user = auth.user
   const accessToken =
@@ -151,8 +161,8 @@ export function App() {
     let cancelled = false
     setReadyToken(undefined)
     if (accessToken && user?.id_token) {
-      void startSession(accessToken, user.id_token).then(() => {
-        if (!cancelled) setReadyToken(accessToken)
+      void startSession(accessToken, user.id_token).then((state) => {
+        if (!cancelled) { setCastReady(state.castReady); setReadyToken(accessToken) }
       }).catch(() => {
         if (!cancelled) setActionError('Your session could not be opened. Please sign out and sign in again.')
       })
@@ -175,6 +185,20 @@ export function App() {
         .finally(() => { void auth.removeUser() })
     }, async () => { await apiFetch('/api/session/activity', { method: 'POST' }) })
   }, [readyToken, auth.removeUser])
+
+  async function reauthenticateForVote() {
+    const { nonce } = await apiFetch<{ nonce: string }>('/api/session/prepare-cast', { method: 'POST' })
+    setReadyToken(undefined)
+    await auth.signinRedirect({ nonce, prompt: 'login', max_age: 0 })
+  }
+
+  function receiveAnonymousBallot(ballot: AnonymousBallot) {
+    setAnonymousBallot(ballot)
+    setReadyToken(undefined)
+    setAccessTokenProvider(() => undefined)
+    setDPoPProofProvider(undefined)
+    void auth.removeUser()
+  }
 
   async function login() {
     setActionError('')
@@ -228,7 +252,7 @@ export function App() {
     <main>
       <h1>Electronic Voting Platform</h1>
 
-      <section className="card" aria-label="Sign-in">
+      {!anonymousBallot && <section className="card" aria-label="Sign-in">
         {auth.isAuthenticated ? (
           <>
             <p>
@@ -254,12 +278,14 @@ export function App() {
         )}
 
         {actionError && <p role="alert">{actionError}</p>}
-      </section>
+      </section>}
 
+      {receipt && <p role="status">{receipt}</p>}
+      {anonymousBallot && <AnonymousCastPanel ballot={anonymousBallot} finish={finishCast} />}
       <EnrolmentCheckForm />
 
       {accessToken && readyToken === accessToken && (
-        <SignedInPanels key={accessToken} />
+        <SignedInPanels key={accessToken} castReady={castReady} reauthenticate={reauthenticateForVote} onReady={receiveAnonymousBallot} />
       )}
     </main>
   )

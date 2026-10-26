@@ -16,18 +16,20 @@ import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class BoundSessionService {
     public static final String COOKIE = "__Host-evp-session";
     private final BoundSessionRepository records;
     private final Clock clock;
+    private final CastChallengeRepository challenges;
     private final NimbusJwtDecoder idTokens;
 
-    public BoundSessionService(BoundSessionRepository records, Clock clock,
+    public BoundSessionService(BoundSessionRepository records, Clock clock, CastChallengeRepository challenges,
             @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwks,
             @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuer) {
-        this.records = records; this.clock = clock;
+        this.records = records; this.clock = clock; this.challenges = challenges;
         // Deliberately not a JwtDecoder bean: resource-server access-token validation stays intact.
         this.idTokens = NimbusJwtDecoder.withJwkSetUri(jwks).jwsAlgorithm(SignatureAlgorithm.RS256).build();
         this.idTokens.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
@@ -35,6 +37,7 @@ public class BoundSessionService {
             new JwtClaimValidator<List<String>>("aud", aud -> aud != null && aud.contains("evp-frontend"))));
     }
 
+    @Transactional
     public synchronized String start(Jwt access, String idToken, String existingCookie) {
         Instant now = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
         Jwt identity;
@@ -68,8 +71,49 @@ public class BoundSessionService {
         byte[] bytes = new byte[32];
         new SecureRandom().nextBytes(bytes);
         String cookie = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        records.saveAndFlush(new BoundSession(id, hash(cookie), hash(access.getTokenValue()), access.getExpiresAt(), now));
+        BoundSession session = new BoundSession(id, hash(cookie), hash(access.getTokenValue()), access.getExpiresAt(), now);
+        session.authenticatedAt = authenticatedAt;
+        String nonce = identity.getClaimAsString("nonce");
+        if (nonce != null) {
+            CastChallenge challenge = challenges.findById(hash(nonce)).orElse(null);
+            if (challenge != null) {
+                if (challenge.used || !now.isBefore(challenge.expiresAt)
+                        || !challenge.subjectHash.equals(hash(access.getSubject()))
+                        || !authenticatedAt.isAfter(challenge.previousAuthentication)
+                        || authenticatedAt.isBefore(challenge.createdAt.truncatedTo(java.time.temporal.ChronoUnit.SECONDS))) {
+                    throw new ReauthenticationRequired();
+                }
+                challenge.used = true;
+                challenges.saveAndFlush(challenge);
+                session.castVerified = true;
+            }
+        }
+        records.saveAndFlush(session);
         return cookie;
+    }
+
+    @Transactional
+    public synchronized String prepareCast(Jwt access, String cookie) {
+        BoundSession session = lookup(access, cookie);
+        if (session.authenticatedAt == null) throw new SessionRejected();
+        byte[] bytes = new byte[32]; new SecureRandom().nextBytes(bytes);
+        String nonce = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        challenges.saveAndFlush(new CastChallenge(hash(nonce), hash(access.getSubject()),
+            clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS), session.authenticatedAt));
+        // The old session must not remain usable during or after reauthentication.
+        session.revoked = true;
+        records.saveAndFlush(session);
+        return nonce;
+    }
+    public synchronized boolean castReady(Jwt access, String cookie) {
+        BoundSession session = lookup(access, cookie);
+        return Boolean.TRUE.equals(session.castVerified) && session.authenticatedAt != null
+            && !session.authenticatedAt.isBefore(clock.instant().minusSeconds(60));
+    }
+    @Transactional
+    public synchronized void consumeCastSession(Jwt access, String cookie) {
+        if (!castReady(access, cookie)) throw new ReauthenticationRequired();
+        end(access, cookie);
     }
 
     public synchronized void require(Jwt access, String cookie) { lookup(access, cookie); }

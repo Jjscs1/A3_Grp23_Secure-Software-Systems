@@ -89,8 +89,10 @@ to the repository. Results of these live checks have not yet been recorded.
 
 ## Limits and the next change
 
-This stage does not yet add a separate reauthentication step for casting or
-close the session as part of casting. SEC-04 must stay open.
+The later [casting-session change](SEC-04-CAST-SESSION.md) adds a separate
+reauthentication step and closes the session atomically at blind-token issuance.
+Read that document for its timing, checks and remaining integration limits.
+SEC-04 must stay open until the remaining live checks are complete.
 The token-issuance flow currently marks a ballot issued before submission.
 The next change must preserve the anonymous token across that controlled flow
 without attaching a voter identity to /api/ballots.
@@ -117,3 +119,13 @@ keep the old server session valid just by delaying its local timer.
 References:
 - https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie
 - https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+
+## Local checks on 27 October 2026
+
+The user ran 99 backend tests and 38 frontend tests successfully before the
+casting-session change. Build and lint passed. A voter1 browser login succeeded.
+DevTools showed __Host-evp-session with Secure, HttpOnly, SameSite Strict and
+Path /. After inactivity the voting panels disappeared and the 90-second
+message appeared. A new sign-in requested the password and succeeded.
+This browser observation checks the UI; the automated session tests separately
+check the server rejection of an idle session.

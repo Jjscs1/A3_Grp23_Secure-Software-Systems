@@ -36,6 +36,18 @@ public class BoundSessionController {
         response.addHeader("Set-Cookie", cookie("", 0));
         return ResponseEntity.noContent().build();
     }
+    @GetMapping("/status")
+    public java.util.Map<String,Boolean> state(@AuthenticationPrincipal Jwt jwt, HttpServletRequest request) {
+        return java.util.Map.of("castReady", sessions.castReady(jwt, BoundSessionFilter.cookie(request)));
+    }
+    @PostMapping("/prepare-cast")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('VOTER')")
+    public java.util.Map<String,String> prepare(@AuthenticationPrincipal Jwt jwt, HttpServletRequest request,
+            HttpServletResponse response) {
+        String nonce = sessions.prepareCast(jwt, BoundSessionFilter.cookie(request));
+        response.addHeader("Set-Cookie", cookie("", 0));
+        return java.util.Map.of("nonce", nonce);
+    }
     private String cookie(String value, long seconds) {
         return ResponseCookie.from(BoundSessionService.COOKIE, value).path("/").secure(true)
             .httpOnly(true).sameSite("Strict").maxAge(seconds).build().toString();
