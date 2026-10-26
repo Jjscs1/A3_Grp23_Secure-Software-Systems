@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Keys and files the demos generate - never commit these
+*.pem
+*.db
+verifier_state.json
+results_v*.json
+audit_export*.json
+published_results.json
+
+# CI outputs
+all-requirements.txt
+sbom.cdx.json

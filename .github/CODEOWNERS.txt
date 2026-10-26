@@ -1,0 +1,6 @@
+*                @Jjscs1 @khaled20100 @Arvind9750
+
+# Security pipeline - changing these could switch the checks off
+/.github/        @Arvind9750 @Jjscs1
+/.gitleaks.toml  @Arvind9750 @Jjscs1
+/sec20_ci_cd/    @Arvind9750 @Jjscs1

@@ -1,0 +1,17 @@
+# SEC-20 - gitleaks configuration: use all of gitleaks' default secret rules.
+# Real keys are never committed: the modules create them at runtime, and
+# *.pem files are git-ignored.
+title = "A3 Group 23 gitleaks config"
+
+[extend]
+useDefault = true
+
+# Only for values that are definitely NOT secrets. Keep this list tiny and
+# say why each entry is safe.
+[allowlist]
+description = "Known false positives"
+regexes = [
+  # A Python type hint (sec17 audit_log.py: `signing_key: ed25519.Ed25519PrivateKey`),
+  # not a key value. Matched exactly, so real keys are still caught.
+  '''^ed25519\.Ed25519PrivateKey$''',
+]

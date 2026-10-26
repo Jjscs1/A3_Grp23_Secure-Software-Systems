@@ -1,0 +1,131 @@
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"   # weekly re-scan: new CVEs appear in dependencies we did not change
+  workflow_dispatch:       # "Run workflow" button on the Actions tab
+
+# Least privilege: the token is read-only unless a job asks for more.
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 1. Tests - every sec*/ folder's pytest suite (SEC-15 ... SEC-20)
+  tests:
+    name: Tests - pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run the tests of every module
+        run: python sec20_ci_cd/run_all_tests.py
+
+  # 2a. Static analysis (SAST) - Semgrep
+  semgrep:
+    name: SAST - Semgrep
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Semgrep - fails the build on any finding
+        run: >
+          semgrep scan
+          --config p/python --config p/flask --config p/secrets
+          --metrics=off --error --exclude tests .
+
+  # 2b. Static analysis (SAST) - CodeQL (results appear in the Security tab)
+  codeql:
+    name: SAST - CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
+
+  # 3. Dependency scan - known vulnerabilities in any requirements.txt
+  dependency-scan:
+    name: Dependency scan - pip-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit
+      - run: python sec20_ci_cd/collect_requirements.py all-requirements.txt
+      - name: Fail on any known vulnerability
+        run: pip-audit -r all-requirements.txt --strict --vulnerability-service osv
+
+  # 4. Secret scan - gitleaks over the WHOLE git history
+  secret-scan:
+    name: Secret scan - gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: "8.21.2"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history, so a secret that was "deleted" later is still caught
+          persist-credentials: false
+      - name: Install gitleaks
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+      - name: Scan every commit - fails if a secret is found
+        run: ./gitleaks git --config .gitleaks.toml --redact --verbose --exit-code 1 .
+
+  # 5. SBOM - a CycloneDX list of every package (and version) we ship
+  sbom:
+    name: SBOM - CycloneDX
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install exactly what the modules need, in a clean virtualenv
+        run: |
+          python sec20_ci_cd/collect_requirements.py all-requirements.txt
+          python -m venv /tmp/app-env
+          /tmp/app-env/bin/pip install -r all-requirements.txt
+          pip install cyclonedx-bom
+      - name: Generate the SBOM
+        run: cyclonedx-py environment /tmp/app-env --of JSON -o sbom.cdx.json
+      - name: Check the SBOM is valid and not empty
+        run: python sec20_ci_cd/check_sbom.py sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          retention-days: 90

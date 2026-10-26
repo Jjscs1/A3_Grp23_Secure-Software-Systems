@@ -1,0 +1,7 @@
+<!-- Link the issue, e.g. "Closes #18" -->
+
+## Security checklist
+- [ ] No secrets, keys or real personal data added (gitleaks must pass)
+- [ ] Tests added or updated, including at least one attack / failure case
+- [ ] Any new dependency is explained here, and pip-audit passes
+- [ ] Semgrep and CodeQL findings are fixed, not suppressed without a reason
