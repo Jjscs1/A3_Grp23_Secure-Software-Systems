@@ -58,4 +58,31 @@ class ApiSecurityTests {
         mvc.perform(post("/api/me").with(jwt()))
             .andExpect(status().isForbidden());
     }
+        @Test
+    void meReturnsAssignedRoles() throws Exception {
+        mvc.perform(get("/api/me")
+                .with(jwt()
+                    .jwt(token -> token
+                        .subject("test-user-id")
+                        .claim("preferred_username", "voter1"))
+                    .authorities(
+                        new org.springframework.security.core.authority
+                            .SimpleGrantedAuthority("ROLE_VOTER")
+                    )))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.roles",
+                org.hamcrest.Matchers.contains("VOTER")));
+    }
+
+    @Test
+    void meDoesNotTreatScopesAsRoles() throws Exception {
+        mvc.perform(get("/api/me")
+                .with(jwt().authorities(
+                    new org.springframework.security.core.authority
+                        .SimpleGrantedAuthority("SCOPE_openid")
+                )))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.roles",
+                org.hamcrest.Matchers.empty()));
+    }
 }

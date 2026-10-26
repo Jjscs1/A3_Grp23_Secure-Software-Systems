@@ -11,6 +11,12 @@ import { VotingPanel } from './components/VotingPanel'
 
 const DIVISION = 'MELBOURNE'
 
+interface UserInfo {
+  subject: string
+  username: string
+  roles: string[]
+}
+
 // Temporary placeholder from the shared app.
 // SEC-12's owner must replace this with actual ballot encryption.
 async function pendingSec12Envelope(): Promise<string> {
@@ -23,9 +29,39 @@ async function pendingSec12Envelope(): Promise<string> {
 function SignedInPanels() {
   const [candidates, setCandidates] = useState<CandidateView[]>([])
   const [candidateError, setCandidateError] = useState('')
+  const [roles, setRoles] = useState<string[]>([])
+  const [loadingRoles, setLoadingRoles] = useState(true)
+  const [rolesError, setRolesError] = useState('')
 
   useEffect(() => {
     let cancelled = false
+
+    apiFetch<UserInfo>('/api/me', { cache: 'no-store' })
+      .then((data) => {
+        if (
+          !Array.isArray(data.roles) ||
+          !data.roles.every((role) => typeof role === 'string')
+        ) {
+          throw new Error('Invalid roles response.')
+        }
+
+        if (!cancelled) {
+          setRoles(data.roles)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRoles([])
+          setRolesError(
+            'Unable to load your access permissions. Please sign out and try again.',
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingRoles(false)
+        }
+      })
 
     apiFetch<CandidateView[]>(
       `/api/candidates?division=${encodeURIComponent(DIVISION)}`,
@@ -46,6 +82,9 @@ function SignedInPanels() {
     }
   }, [])
 
+  const isVoter = roles.includes('VOTER')
+  const isDelegate = roles.includes('DELEGATE')
+
   return (
     <>
       <section className="card" aria-labelledby="cand-heading">
@@ -54,12 +93,28 @@ function SignedInPanels() {
         <CandidateList candidates={candidates} />
       </section>
 
-      <VotingPanel
-        division={DIVISION}
-        buildEncryptedBallot={pendingSec12Envelope}
-      />
+      {loadingRoles && <p>Loading your access permissions...</p>}
 
-      <ChangeRequestPanel division={DIVISION} />
+      {rolesError && <p role="alert">{rolesError}</p>}
+
+      {!loadingRoles && !rolesError && (
+        <>
+          {isVoter && (
+            <VotingPanel
+              division={DIVISION}
+              buildEncryptedBallot={pendingSec12Envelope}
+            />
+          )}
+
+          {isDelegate && (
+            <ChangeRequestPanel division={DIVISION} />
+          )}
+
+          {!isVoter && !isDelegate && (
+            <p>No voting or delegate access is assigned to this account.</p>
+          )}
+        </>
+      )}
     </>
   )
 }
@@ -165,7 +220,7 @@ export function App() {
       <EnrolmentCheckForm />
 
       {accessToken && readyToken === accessToken && (
-        <SignedInPanels key={user?.profile.sub} />
+        <SignedInPanels key={accessToken} />
       )}
     </main>
   )
