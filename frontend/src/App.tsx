@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from './api/http';
 import { CandidateList, type CandidateView } from './components/CandidateList';
 import { ChangeRequestPanel } from './components/ChangeRequestPanel';
+import { EnrolmentCheckForm } from './components/EnrolmentCheckForm';
 
 /**
  * Shared app shell. Each requirement adds its screen here as it is built.
@@ -21,6 +22,7 @@ export function App() {
   return (
     <main>
       <h1>Electronic Voting Platform</h1>
+      <EnrolmentCheckForm />
       <section className="card" aria-labelledby="cand-heading">
         <h2 id="cand-heading">Candidates: {DIVISION}</h2>
         <CandidateList candidates={candidates} />
