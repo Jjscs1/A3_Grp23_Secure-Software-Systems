@@ -1,13 +1,3 @@
-"""Small Flask API that exposes SEC-15 over HTTP.
-
-POST /ballots       {"choice": "..."}           cast a ballot (poll must be open)
-POST /poll/close                                close the poll
-POST /tally/decrypt {"shares": ["evs1-...", ...]}
-    -> 423 Locked   if the poll is still open
-    -> 403          if fewer than 3 valid trustee shares are given
-    -> 200          with the decrypted ballots otherwise
-"""
-
 from __future__ import annotations
 
 from flask import Flask, jsonify, request

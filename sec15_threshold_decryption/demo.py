@@ -1,5 +1,3 @@
-"""SEC-15 walkthrough - run with:  python demo.py"""
-
 from sec15 import shamir
 from sec15.election import Election, PollStillOpen
 from sec15.election_keys import key_ceremony

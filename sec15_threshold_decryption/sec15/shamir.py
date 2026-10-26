@@ -1,18 +1,3 @@
-"""Shamir secret sharing (SEC-15).
-
-Splits a 32-byte secret into `count` shares so that any `threshold` of them
-rebuild it, and fewer than `threshold` reveal nothing at all about it.
-
-How it works:
-    * Pick a random polynomial  f(x) = secret + a1*x + a2*x^2   (degree = threshold - 1)
-    * Share i is the point (i, f(i)).
-    * Any `threshold` points fix the polynomial, so f(0) = secret can be recovered
-      with Lagrange interpolation. With fewer points, every secret is equally likely.
-
-All arithmetic is done modulo a large prime (2^521 - 1), and the random
-coefficients come from Python's `secrets` module (a cryptographic RNG).
-"""
-
 from __future__ import annotations
 
 import hashlib

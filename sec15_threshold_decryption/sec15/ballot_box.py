@@ -1,12 +1,3 @@
-"""A minimal encrypted ballot box, so SEC-15 has real ballots to decrypt.
-
-Each ballot is encrypted with hybrid encryption:
-    * a fresh AES-256-GCM key encrypts the ballot itself
-    * that AES key is encrypted ("wrapped") with the election RSA public key
-
-Only the election private key - which needs 3 trustee shares - can unwrap it.
-"""
-
 from __future__ import annotations
 
 import json

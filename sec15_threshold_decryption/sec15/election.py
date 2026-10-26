@@ -1,10 +1,3 @@
-"""The election and its decryption lock (SEC-15).
-
-Decryption is only possible once the poll is CLOSED. Before that, every
-decryption attempt raises PollStillOpen, which the web API turns into
-HTTP 423 Locked - even if the caller has all five trustee shares.
-"""
-
 from __future__ import annotations
 
 from .ballot_box import decrypt_ballot, encrypt_ballot

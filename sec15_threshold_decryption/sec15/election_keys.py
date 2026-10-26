@@ -1,20 +1,3 @@
-"""Election key ceremony and threshold unlock (SEC-15).
-
-At setup:
-    1. Generate the election key pair (RSA-3072). Ballots are encrypted with the
-       PUBLIC key, so anyone can cast a vote but nobody can read one.
-    2. Generate a random 256-bit key-encryption key (KEK) and use it to encrypt
-       the PRIVATE key.
-    3. Split the KEK 3-of-5 between trustees with Shamir secret sharing.
-    4. Throw the KEK away. It is never stored anywhere.
-
-At the count:
-    Any 3 trustees hand over their shares -> the KEK is rebuilt -> the private
-    key is decrypted -> ballots can be decrypted. 2 shares are not enough.
-"""
-
-from __future__ import annotations
-
 import hashlib
 import os
 from dataclasses import dataclass
