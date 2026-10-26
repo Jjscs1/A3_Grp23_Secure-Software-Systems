@@ -1,19 +1,101 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from 'react-oidc-context'
+import { apiFetch, setAccessTokenProvider } from './api/http'
+import {
+  CandidateList,
+  type CandidateView,
+} from './components/CandidateList'
+import { ChangeRequestPanel } from './components/ChangeRequestPanel'
+import { EnrolmentCheckForm } from './components/EnrolmentCheckForm'
+import { VotingPanel } from './components/VotingPanel'
 
-function App() {
+const DIVISION = 'MELBOURNE'
+
+// Temporary placeholder from the shared app.
+// SEC-12's owner must replace this with actual ballot encryption.
+async function pendingSec12Envelope(): Promise<string> {
+  return JSON.stringify({
+    alg: 'pending-SEC-12',
+    note: 'replace with the client-side encryption envelope',
+  })
+}
+
+function SignedInPanels() {
+  const [candidates, setCandidates] = useState<CandidateView[]>([])
+  const [candidateError, setCandidateError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    apiFetch<CandidateView[]>(
+      `/api/candidates?division=${encodeURIComponent(DIVISION)}`,
+    )
+      .then((data) => {
+        if (!cancelled) {
+          setCandidates(data)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCandidateError('Unable to load candidates.')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return (
+    <>
+      <section className="card" aria-labelledby="cand-heading">
+        <h2 id="cand-heading">Candidates: {DIVISION}</h2>
+        {candidateError && <p role="alert">{candidateError}</p>}
+        <CandidateList candidates={candidates} />
+      </section>
+
+      <VotingPanel
+        division={DIVISION}
+        buildEncryptedBallot={pendingSec12Envelope}
+      />
+
+      <ChangeRequestPanel division={DIVISION} />
+    </>
+  )
+}
+
+export function App() {
   const auth = useAuth()
   const [actionError, setActionError] = useState('')
-  const [apiResult, setApiResult] = useState('')
-  const [checkingApi, setCheckingApi] = useState(false)
+  const [readyToken, setReadyToken] = useState<string | undefined>()
+
+  const user = auth.user
+  const accessToken =
+    auth.isAuthenticated && user && !user.expired
+      ? user.access_token
+      : undefined
+
+  useEffect(() => {
+    setAccessTokenProvider(() => {
+      if (!accessToken || !user || user.expired) {
+        return undefined
+      }
+
+      return accessToken
+    })
+
+    setReadyToken(accessToken)
+
+    return () => {
+      setAccessTokenProvider(() => undefined)
+    }
+  }, [accessToken, user])
 
   async function login() {
     setActionError('')
 
     try {
-      await auth.signinRedirect({
-        nonce: crypto.randomUUID(),
-      })
+      await auth.signinRedirect()
     } catch {
       setActionError('Unable to start sign-in. Please try again.')
     }
@@ -21,46 +103,16 @@ function App() {
 
   async function logout() {
     setActionError('')
-    setApiResult('')
+    setReadyToken(undefined)
+    setAccessTokenProvider(() => undefined)
 
     try {
       await auth.signoutRedirect()
     } catch {
-      setActionError('Unable to sign out. Please try again.')
-    }
-  }
-
-  async function checkApi() {
-    setActionError('')
-    setApiResult('')
-
-    if (!auth.user || auth.user.expired) {
-      setActionError('Please sign out and sign in again.')
-      return
-    }
-
-    setCheckingApi(true)
-
-    try {
-      const response = await fetch('http://localhost:8080/api/me', {
-        headers: {
-          Authorization: `Bearer ${auth.user.access_token}`,
-        },
-        credentials: 'omit',
-        cache: 'no-store',
-      })
-
-      if (!response.ok) {
-        setActionError(`API request failed: HTTP ${response.status}`)
-        return
-      }
-
-      const data = await response.json()
-      setApiResult(JSON.stringify(data, null, 2))
-    } catch {
-      setActionError('Cannot reach the API. Check that the backend is running.')
-    } finally {
-      setCheckingApi(false)
+      await auth.removeUser()
+      setActionError(
+        'Local sign-in was cleared, but Keycloak sign-out could not be confirmed.',
+      )
     }
   }
 
@@ -79,50 +131,42 @@ function App() {
   }
 
   return (
-    <main style={{ maxWidth: 640, margin: '60px auto', padding: 24 }}>
-      <h1>EVP — Electronic Voting Prototype</h1>
+    <main>
+      <h1>Electronic Voting Platform</h1>
 
-      {auth.isAuthenticated ? (
-        <>
-          <p>
-            Signed in as:{' '}
-            <strong>{auth.user?.profile.preferred_username}</strong>
-          </p>
+      <section className="card" aria-label="Sign-in">
+        {auth.isAuthenticated ? (
+          <>
+            <p>
+              Signed in as:{' '}
+              <strong>{user?.profile.preferred_username}</strong>
+            </p>
 
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => void checkApi()}
-              disabled={checkingApi}
-            >
-              {checkingApi ? 'Checking...' : 'Check protected API'}
-            </button>
+            {!accessToken && (
+              <p>Your session has expired. Please sign out and sign in again.</p>
+            )}
 
             <button onClick={() => void logout()}>
               Sign out
             </button>
-          </div>
+          </>
+        ) : (
+          <>
+            <p>Sign in to access the voting application.</p>
+            <button onClick={() => void login()}>
+              Sign in with Keycloak
+            </button>
+          </>
+        )}
 
-          {apiResult && (
-            <section>
-              <h2>Backend response</h2>
-              <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                {apiResult}
-              </pre>
-            </section>
-          )}
-        </>
-      ) : (
-        <>
-          <p>Sign in to continue.</p>
-          <button onClick={() => void login()}>
-            Sign in with Keycloak
-          </button>
-        </>
+        {actionError && <p role="alert">{actionError}</p>}
+      </section>
+
+      <EnrolmentCheckForm />
+
+      {accessToken && readyToken === accessToken && (
+        <SignedInPanels key={user?.profile.sub} />
       )}
-
-      {actionError && <p role="alert">{actionError}</p>}
     </main>
   )
 }
-
-export default App

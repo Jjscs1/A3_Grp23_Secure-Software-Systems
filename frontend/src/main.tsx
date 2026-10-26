@@ -4,8 +4,8 @@ import { AuthProvider } from 'react-oidc-context'
 import { InMemoryWebStorage, WebStorageStateStore } from 'oidc-client-ts'
 import { VerifiedUserManager } from './VerifiedUserManager'
 import { OIDC_CLIENT_ID, OIDC_ISSUER } from './idTokenValidation'
-import './index.css'
-import App from './App.tsx'
+import { App } from './App'
+import './styles.css'
 
 const userManager = new VerifiedUserManager({
   authority: OIDC_ISSUER,
