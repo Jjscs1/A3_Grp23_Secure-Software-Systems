@@ -219,3 +219,15 @@ After waiting, another request returned HTTP 400.
 
 This confirms IP throttling and automatic recovery for the tested evp endpoint.
 It does not prove all account and endpoint limits or the absence of account lockout.
+
+## Account lockout checks on 27 October 2026
+
+The live Admin Console showed Brute Force Mode set to Disabled
+in both evp and evp-staff. No settings were changed.
+
+For voter1, we entered an incorrect password three times,
+then entered the correct password. Login succeeded without
+an administrator unlocking the account.
+
+This confirms recovery for the tested account and attempts.
+It is not an exhaustive test of every account or authentication route.
