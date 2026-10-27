@@ -75,8 +75,7 @@ public final class Shamir {
         }
         return shares;
     }
-
-    @throws ShareException 
+ 
     public static byte[] combine(List<String> shareTexts, int threshold) {
         Map<Integer, Share> unique = new LinkedHashMap<>(); 
         for (String text : shareTexts) {

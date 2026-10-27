@@ -11,10 +11,7 @@ public final class HouseCount {
 
     private HouseCount() {
     }
-
-    @param candidateIds 
-    @param ballots      
-    @param seed         
+        
     public static HouseResult count(List<Integer> candidateIds, List<List<Integer>> ballots, long seed) {
         if (candidateIds.isEmpty()) {
             throw new IllegalArgumentException("No candidates");

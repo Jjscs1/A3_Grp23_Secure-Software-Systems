@@ -99,10 +99,6 @@ public class ThresholdDecryptionService {
         }
     }
 
-     @throws PollStillOpenException  
-     @throws ShareException          
-     @throws KeyCeremonyException     
-     
     @Transactional(readOnly = true)
     public DecryptionResult decryptBallotBox(List<String> shareTexts, String actor) {
 

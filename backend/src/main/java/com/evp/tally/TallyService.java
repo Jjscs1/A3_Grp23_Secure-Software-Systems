@@ -53,8 +53,7 @@ public class TallyService {
                 List.of(), List.of(), seed);
         return save(doc, null, actor);
     }
-
-    @throws TallyException 
+ 
     @Transactional
     public PublishedTally recount(long tallyId, String actor) {
         PublishedTally original = tallies.findById(tallyId).orElseThrow(TallyNotFoundException::new);

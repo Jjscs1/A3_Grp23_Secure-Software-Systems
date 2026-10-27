@@ -55,7 +55,6 @@ public final class BallotEnvelope {
         }
     }
 
-    @throws IllegalArgumentException
     public static String decrypt(PrivateKey electionKey, String envelope) {
         try {
             JsonNode node = JSON.readTree(envelope);
