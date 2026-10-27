@@ -86,6 +86,7 @@ public class SecurityConfig {
                     "/api/tally/decrypt").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/tally/house", "/api/tally/senate",
                     "/api/tally/{id}/recount").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/audit/export", "/api/audit/verify").authenticated()
                 // New routes require both a method policy and an explicit method/path entry here.
                 .anyRequest().denyAll())
             .oauth2ResourceServer(oauth -> oauth
