@@ -1044,3 +1044,14 @@ Review this if cookie-based authentication is introduced.
 
 The successful tests describe the accounts and routes tested.
 The full identity and access scope is not yet complete.
+### SEC-02: Direct access grants disabled
+
+On 27 October 2026, Direct Access Grants were disabled for admin-cli
+in evp and evp-staff. Both updated realm configurations were exported.
+
+Password-grant requests using dummy credentials returned
+unauthorized_client: Client not allowed for direct access grants
+in both realms.
+
+No enabled client in either updated export allows Direct Access Grants.
+The master realm was not changed.
