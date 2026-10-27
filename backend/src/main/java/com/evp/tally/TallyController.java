@@ -12,6 +12,8 @@ import java.time.Instant;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api")
 public class TallyController {
+
+    static final String ELEVATED_ADMIN = "hasRole('ADMIN') and @adminElevation.isActive(#jwt)";
 
     private final TallyService service;
 
@@ -61,38 +65,41 @@ public class TallyController {
 
     @PostMapping("/tally/house")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ELECTION_ADMIN')")
-    public TallySummary house(@Valid @RequestBody HouseRequest r, Principal admin) {
+    @PreAuthorize(ELEVATED_ADMIN)
+    public TallySummary house(@Valid @RequestBody HouseRequest r, @AuthenticationPrincipal Jwt jwt, Principal admin) {
         return TallySummary.of(service.publishHouse(r.region(), candidates(r.candidates()), r.ballots(),
                 r.receipts(), seed(r.tiebreakSeed()), admin.getName()));
     }
 
     @PostMapping("/tally/senate")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ELECTION_ADMIN')")
-    public TallySummary senate(@Valid @RequestBody SenateRequest r, Principal admin) {
+    @PreAuthorize(ELEVATED_ADMIN)
+    public TallySummary senate(@Valid @RequestBody SenateRequest r, @AuthenticationPrincipal Jwt jwt, Principal admin) {
         return TallySummary.of(service.publishSenate(r.region(), candidates(r.candidates()), r.ballots(),
                 r.vacancies(), r.receipts(), seed(r.tiebreakSeed()), admin.getName()));
     }
 
     @PostMapping("/tally/{id}/recount")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ELECTION_ADMIN')")
-    public TallySummary recount(@PathVariable long id, Principal admin) {
+    @PreAuthorize(ELEVATED_ADMIN)
+    public TallySummary recount(@PathVariable long id, @AuthenticationPrincipal Jwt jwt, Principal admin) {
         return TallySummary.of(service.recount(id, admin.getName()));
     }
 
     @GetMapping("/public/tally")
+    @PreAuthorize("permitAll()")
     public List<TallySummary> list() {
         return service.all().stream().map(TallySummary::of).toList();
     }
 
     @GetMapping(value = "/public/tally/{id}", produces = "application/json")
+    @PreAuthorize("permitAll()")
     public String document(@PathVariable long id) {
         return service.get(id).getDocument();
     }
 
     @GetMapping("/public/tally/{id}/verify")
+    @PreAuthorize("permitAll()")
     public VerifyResponse verify(@PathVariable long id) {
         List<String> problems = service.verify(id);
         return new VerifyResponse(id, problems.isEmpty(), problems);

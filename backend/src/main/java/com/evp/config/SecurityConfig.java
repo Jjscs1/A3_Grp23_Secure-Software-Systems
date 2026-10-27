@@ -81,6 +81,11 @@ public class SecurityConfig {
                     "/api/change-requests/{id}/approvals", "/api/change-requests/{id}/rejection",
                     "/api/session/start", "/api/session/activity", "/api/session/end",
                     "/api/session/prepare-cast").authenticated()
+                                    .requestMatchers(HttpMethod.GET, "/api/trustees/election-key", "/api/poll/status").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/trustees/key-ceremony", "/api/poll/close",
+                    "/api/tally/decrypt").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/tally/house", "/api/tally/senate",
+                    "/api/tally/{id}/recount").authenticated()
                 // New routes require both a method policy and an explicit method/path entry here.
                 .anyRequest().denyAll())
             .oauth2ResourceServer(oauth -> oauth

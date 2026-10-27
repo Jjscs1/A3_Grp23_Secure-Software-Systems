@@ -1,12 +1,15 @@
 package com.evp.tally;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.evp.changerequest.ChangeRequestRepository;
+import com.evp.identity.access.AdminElevation;
 import com.evp.support.ApiTestBase;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +19,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 
 class TallyApiTest extends ApiTestBase {
+
+    private static JwtRequestPostProcessor elevatedAdmin() {
+        long now = Instant.now().getEpochSecond();
+        return jwt().jwt(j -> j.subject("admin1")
+                        .claim(AdminElevation.START, now - 60)
+                        .claim(AdminElevation.END, now + 3600))
+                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"));
+    }
 
     @Autowired
     private ObjectMapper json;
@@ -44,7 +57,7 @@ class TallyApiTest extends ApiTestBase {
         body.put("ballots", TallyCountTest.DESSERTS);
         body.put("vacancies", 3);
         body.put("receipts", TallyCountTest.receipts(20));
-        String response = mvc.perform(post("/api/tally/senate").with(user("admin1", "ELECTION_ADMIN"))
+        String response = mvc.perform(post("/api/tally/senate").with(elevatedAdmin())
                         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -77,7 +90,7 @@ class TallyApiTest extends ApiTestBase {
 
         proposeExclusion(TallyCountTest.CHOC, "bob", "carol");
 
-        String response = mvc.perform(post("/api/tally/{id}/recount", original).with(user("admin1", "ELECTION_ADMIN")))
+        String response = mvc.perform(post("/api/tally/{id}/recount", original).with(elevatedAdmin()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.recountOf").value(original))
                 .andReturn().getResponse().getContentAsString();
@@ -96,9 +109,9 @@ class TallyApiTest extends ApiTestBase {
     @DisplayName("SEC-16: an exclusion with only one approval is NOT applied to the recount")
     void pendingExclusionIgnored() throws Exception {
         long original = publishDessertSenate();
-        proposeExclusion(TallyCountTest.CHOC, "bob"); 
+        proposeExclusion(TallyCountTest.CHOC, "bob");
 
-        mvc.perform(post("/api/tally/{id}/recount", original).with(user("admin1", "ELECTION_ADMIN")))
+        mvc.perform(post("/api/tally/{id}/recount", original).with(elevatedAdmin()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("TALLY_REFUSED"));
         assertThat(tallies.count()).isEqualTo(1);
@@ -134,12 +147,12 @@ class TallyApiTest extends ApiTestBase {
         Map<String, Object> body = new HashMap<>();
         body.put("region", "TENN");
         body.put("candidates", TallyCountTest.CITIES);
-        body.put("ballots", List.of(List.of(1, 1, 2))); 
+        body.put("ballots", List.of(List.of(1, 1, 2)));
         body.put("receipts", List.of("r1"));
         mvc.perform(post("/api/tally/house").with(user("voter1", "VOTER"))
                         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body)))
                 .andExpect(status().isForbidden());
-        mvc.perform(post("/api/tally/house").with(user("admin1", "ELECTION_ADMIN"))
+        mvc.perform(post("/api/tally/house").with(elevatedAdmin())
                         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());
     }
