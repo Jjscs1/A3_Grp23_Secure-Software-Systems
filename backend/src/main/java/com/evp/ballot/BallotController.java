@@ -1,5 +1,7 @@
 package com.evp.ballot;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -36,6 +38,7 @@ public class BallotController {
     }
 
     @PostMapping
+    @PreAuthorize("permitAll()")
     @ResponseStatus(HttpStatus.CREATED)
     public SubmitBallotResponse submit(@Valid @RequestBody SubmitBallotRequest request) {
         Base64.Decoder b64 = Base64.getDecoder();

@@ -1,5 +1,7 @@
 package com.evp.enrolment;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,6 +20,7 @@ public class EnrolmentCheckController {
     }
 
     @PostMapping("/enrolment-check")
+    @PreAuthorize("permitAll()")
     public EnrolmentCheckResponse check(@Valid @RequestBody EnrolmentCheckRequest request) {
         return service.check(request);
     }
