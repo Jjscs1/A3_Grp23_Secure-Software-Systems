@@ -1,11 +1,13 @@
 package com.evp.trustee;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.evp.ballot.StoredBallot;
 import com.evp.ballot.StoredBallotRepository;
+import com.evp.identity.access.AdminElevation;
 import com.evp.support.ApiTestBase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -17,6 +19,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.ResultActions;
 
 class ThresholdDecryptionApiTest extends ApiTestBase {
@@ -38,13 +42,21 @@ class ThresholdDecryptionApiTest extends ApiTestBase {
 
     private List<String> shares;
 
+    private static JwtRequestPostProcessor elevatedAdmin() {
+        long now = Instant.now().getEpochSecond();
+        return jwt().jwt(j -> j.subject("admin1")
+                        .claim(AdminElevation.START, now - 60)
+                        .claim(AdminElevation.END, now + 3600))
+                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"));
+    }
+
     @BeforeEach
     void freshElection() throws Exception {
         vaults.deleteAll();
         pollClosures.deleteAll();
         ballots.deleteAll();
 
-        String body = mvc.perform(post("/api/trustees/key-ceremony").with(user("admin1", "ELECTION_ADMIN")))
+        String body = mvc.perform(post("/api/trustees/key-ceremony").with(elevatedAdmin()))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         shares = new ArrayList<>();
@@ -57,13 +69,13 @@ class ThresholdDecryptionApiTest extends ApiTestBase {
 
     private ResultActions decrypt(List<String> offered) throws Exception {
         return mvc.perform(post("/api/tally/decrypt")
-                .with(user("trustee1", "TRUSTEE"))
+                .with(user("trustee1", "AEC_OFFICER"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("shares", offered))));
     }
 
     private void closePoll() throws Exception {
-        mvc.perform(post("/api/poll/close").with(user("admin1", "ELECTION_ADMIN"))).andExpect(status().isOk());
+        mvc.perform(post("/api/poll/close").with(elevatedAdmin())).andExpect(status().isOk());
     }
 
     @Test
@@ -124,24 +136,43 @@ class ThresholdDecryptionApiTest extends ApiTestBase {
     }
 
     @Test
-    @DisplayName("SEC-15: only a trustee may call decrypt, and the ceremony cannot be re-run")
+    @DisplayName("SEC-15: only an AEC officer may call decrypt, and the ceremony cannot be re-run")
     void rolesAndCeremonyGuarded() throws Exception {
         closePoll();
         mvc.perform(post("/api/tally/decrypt").with(user("voter1", "VOTER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(Map.of("shares", shares))))
                 .andExpect(status().isForbidden());
-        mvc.perform(post("/api/trustees/key-ceremony").with(user("admin1", "ELECTION_ADMIN")))
+        mvc.perform(post("/api/trustees/key-ceremony").with(elevatedAdmin()))
                 .andExpect(status().isConflict());
     }
 
     @Test
-    @DisplayName("SEC-15: the database holds only the LOCKED private key, never the key itself")
-    void privateKeyIsStoredLocked() throws Exception {
-        ElectionKeyVault vault = vaults.findAll().get(0);
-        assertThat(vault.getLockedPrivateKey()).doesNotStartWith("MII");
-        mvc.perform(get("/api/trustees/election-key").with(user("voter1", "VOTER")))
+    @DisplayName("SEC-15: ADMIN without an active elevation grant cannot run the ceremony or close the poll")
+    void adminWithoutElevationIsRefused() throws Exception {
+        mvc.perform(post("/api/trustees/key-ceremony").with(user("admin1", "ADMIN")))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/poll/close").with(user("admin1", "ADMIN")))
+                .andExpect(status().isForbidden());
+        assertThat(pollClosures.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("SEC-15: the public key and poll status are readable without logging in")
+    void publicEndpointsNeedNoLogin() throws Exception {
+        mvc.perform(get("/api/trustees/election-key"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.algorithm").value(BallotEnvelope.ALGORITHM));
+                .andExpect(jsonPath("$.algorithm").value(BallotEnvelope.ALGORITHM))
+                .andExpect(jsonPath("$.publicKeyPem").value(org.hamcrest.Matchers.startsWith("-----BEGIN PUBLIC KEY-----")));
+        mvc.perform(get("/api/poll/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.closed").value(false));
+    }
+
+    @Test
+    @DisplayName("SEC-15: the database holds only the LOCKED private key, never the key itself")
+    void privateKeyIsStoredLocked() {
+        ElectionKeyVault vault = vaults.findAll().get(0);
+        assertThat(vault.getLockedPrivateKey()).doesNotStartWith("MII"); 
     }
 }
