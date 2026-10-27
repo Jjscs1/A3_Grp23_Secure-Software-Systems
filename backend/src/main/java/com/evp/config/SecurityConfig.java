@@ -73,6 +73,7 @@ public class SecurityConfig {
                     HttpMethod.POST,
                     "/api/ballots"
                 ).permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/me").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/candidates", "/api/change-requests",
                     "/api/session/status", "/api/admin/elevation").authenticated()
