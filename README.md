@@ -1,130 +1,90 @@
-# EVP Part Three: SEC-05, SEC-07, SEC-08, SEC-10, SEC-11
+# Electronic Voting Platform (EVP): Group 23, Part Three
 
-Theme: Enrolment, eligibility and admin controls. Stack per the team doc: Spring Boot 3.3 (Java 21), PostgreSQL, React 18 with TypeScript.
+A working prototype of the secure Electronic Voting Platform, implementing all 20 security requirements (SEC-01 to SEC-20) chosen in Parts One and Two of the group project.
 
-## Committing it in steps
+Stack: React 18 + TypeScript (Vite), Spring Boot 3.5 (Java 21), PostgreSQL 16, Keycloak, GitHub Actions.
 
-The `evp-junaid-by-requirement` folders hold the same code split into one commit each. Copy the contents of each folder into the repo root (where `backend/` and `frontend/` live), allowing overwrites, in this order:
+## Team
 
-| Order | Folder | Commit message |
-|---|---|---|
-| 1 | `00 Shared skeleton` | `Shared skeleton: Spring Boot, React, base security config` |
-| 2 | `SEC-05 Dual authorisation (four-eyes)` | `SEC-05: four-eyes approval for ballot and recount changes, closes #5` |
-| 3 | `SEC-07 XSS prevention and security headers` | `SEC-07: CSP, security headers and XSS lint rules, closes #7` |
-| 4 | `SEC-08 Anti-enumeration enrolment check` | `SEC-08: exact-match, constant-time enrolment check, closes #8` |
-| 5 | `SEC-10 Eligibility validation before ballot issue` | `SEC-10: server-side eligibility check before ballot issue, closes #10` |
-| 6 | `SEC-11 Anonymous single-use voting token` | `SEC-11: blind-signed single-use voting token, closes #11` |
+| Name | Student ID | GitHub ID | Requirements |
+| --- | --- | --- | --- |
+| Junaid Javeed Shaik | s4180547 | [Jjscs1](https://github.com/Jjscs1) | SEC-05, SEC-07, SEC-08, SEC-10, SEC-11 |
+| Khaled Ahmed Alhebbi | s3918789 | [khaled20100](https://github.com/khaled20100) | SEC-01, SEC-02, SEC-03, SEC-04, SEC-09 |
+| Prince | s4223550 | [PJstorm-blip](https://github.com/PJstorm-blip) | SEC-06, SEC-12, SEC-13, SEC-14, SEC-19 |
+| Arvindakshan Sambasivan Ravi | s4206952 | [Arvind9750](https://github.com/Arvind9750) | SEC-15, SEC-16, SEC-17, SEC-18, SEC-20 |
 
-Check the issue numbers on GitHub first. Three files change in more than one step on purpose: `SecurityConfig.java` and `eslint.config.js` (SEC-07 adds to both) and `App.tsx` (each step adds its screen). Every step was checked to compile, lint and pass its own tests, so teammates can pull after any commit. Run `mvn test` in `backend/` after each step.
+Each requirement is a GitHub issue (#1 to #20) with its user story and acceptance criteria.
 
-## Run the tests first
+## Requirements and where they live
 
-```
-cd backend && mvn test          # needs Java 21 and Maven
-cd frontend && npm install && npm test && npm run lint && npm run build
-```
+Backend packages are under `backend/src/main/java/com/evp/`. Tests mirror them under `backend/src/test/java/com/evp/`.
 
-What has already been checked, and what hasn't:
+| Req | Requirement | Code | Tests |
+| --- | --- | --- | --- |
+| SEC-01 | Federated voter authentication (OIDC + PKCE) | `keycloak/evp-realm.json`, `config/SecurityConfig`, `frontend/src/oidcUserManager.ts` | `identity/access/EndpointAccessTests` |
+| SEC-02 | Phishing resistant MFA for staff (WebAuthn) | `keycloak/evp-staff-realm.json` | Keycloak checks in `keycloak/README.md` |
+| SEC-03 | Deny by default access, time boxed admin elevation | `identity/access`, `config/SecurityConfig` | `EndpointAccessTests`, `AdminElevationTests` |
+| SEC-04 | Bound, short lived sessions (DPoP, `__Host-` cookie, reauthentication) | `identity/session`, `frontend/src/session.ts` | `BoundSessionIntegrationTests` |
+| SEC-05 | Dual authorisation (four eyes) | `changerequest` | `ChangeRequestApiTest` |
+| SEC-06 | Injection prevention and input validation | `validation`, `frontend/src/security/inputRules.ts` | `validation/*Test` |
+| SEC-07 | XSS prevention, CSP and security headers | `security`, `frontend/eslint.config.js` | `SecurityHeadersApiTest`, `eslint-xss.test.ts` |
+| SEC-08 | Anti enumeration enrolment check | `enrolment` | `EnrolmentCheckApiTest` |
+| SEC-09 | Rate limiting without lockout | `identity/ratelimit`, `keycloak/gateway` | `RateLimitApiTests`, `RequestRateLimiterTests` |
+| SEC-10 | Eligibility validation before ballot issue | `eligibility` | `EligibilityPolicyTest`, `TokenFlowApiTest` |
+| SEC-11 | Anonymous single use voting token (RFC 9474 blind RSA) | `token`, `ballot`, `frontend/src/security/blindToken.ts` | `BlindSignerTest`, `TokenFlowApiTest` |
+| SEC-12 | Client side ballot encryption with crypto agility | `crypto`, `frontend/src/security/ballotEnvelope.ts` | `crypto/*Test`, `ballotEnvelope.test.ts` |
+| SEC-13 | Ballot secrecy by separation and metadata suppression | `secrecy` | `secrecy/*Test` |
+| SEC-14 | Tamper evident ballot box (Merkle log) with tracking codes | `ballotbox`, `frontend/src/components/TrackingCodeChecker.tsx` | `ballotbox/*Test`, `ballotBox.test.ts` |
+| SEC-15 | Threshold decryption (Shamir 3 of 5) after close of poll | `trustee` | `ThresholdDecryptionApiTest` |
+| SEC-16 | Correct, publicly verifiable IRV and STV tally | `tally` | `TallyApiTest` |
+| SEC-17 | Append only, hash chained, signed audit trail | `audit` | `audit/*Test` |
+| SEC-18 | Signed results export with sequence numbers | `results`, `frontend/src/security/resultsVerifier.ts` | `ResultsApiTest`, `SampleResultsVerifierTest` |
+| SEC-19 | Data protection in transit and at rest | `dataprotection` | `dataprotection/*Test` |
+| SEC-20 | Secure CI/CD and dependency management | `.github/` | `pipeline/PipelineConfigTest` |
 
-| Part | Status |
-|---|---|
-| Core security logic (eligibility rules, lookup key, timing padder, dual control rules, blind signer, CSP) | Compiled and run: 37 checks pass |
-| SEC-11 cryptography against the real browser library (@cloudflare/blindrsa-ts) | Interop checked both ways: JS blinds, Java signs, both sides verify |
-| Frontend (all components, lint rules, production build) | 15 tests pass, lint clean, builds |
-| Spring layer (controllers, JPA, config) and JUnit tests | Compiled against stand-in types only. **Not yet run.** Run `mvn test` before committing anything and fix what fails. |
+More detail on the identity work is in `docs/` (SEC-03, SEC-04 and SEC-09) and `keycloak/README.md`.
 
-## Where each acceptance criterion lives
+## Security rules every route follows
 
-| Issue | Checkbox | Code | Test |
-|---|---|---|---|
-| SEC-05 | Proposer approving own change returns 403 | `changerequest/DualControlPolicy`, `ChangeRequestService`, DB CHECK on `ChangeRequestApproval` | `ChangeRequestApiTest.selfApprovalForbidden`, `.databaseCheckConstraint` |
-| SEC-05 | Exclusion with 1 approval, or no court order, not applied | `DualControlPolicy.requiredApprovals`, `.validateProposal` | `.exclusionNeedsTwoApprovals`, `.exclusionWithoutCourtOrderRejected` |
-| SEC-05 | Every step in the audit log | `ChangeRequestService` calls `AuditLogger` | `.everyStepAudited` |
-| SEC-07 | `<script>` candidate name renders as text | `frontend/src/components/CandidateList.tsx` | `CandidateList.test.tsx` |
-| SEC-07 | CSP has no unsafe-inline or unsafe-eval | `security/ContentSecurityPolicy`, `SecurityHeaders` | `SecurityHeadersApiTest` |
-| SEC-07 | ESLint fails on dangerouslySetInnerHTML | `frontend/eslint.config.js` | `eslint-xss.test.ts` |
-| SEC-08 | Identical status and body shape | `enrolment/EnrolmentCheckService` | `EnrolmentCheckApiTest.identicalStatusAndShape` |
-| SEC-08 | Timing within 50 ms | `enrolment/ResponseTimePadder` | `.responseTimesWithin50ms` |
-| SEC-08 | Partial match returns not found | `enrolment/EnrolmentLookupKey` (HMAC exact match) | `.partialMatchReturnsNotFound` |
-| SEC-10 | Refused: under 18, not enrolled, wrong division, already voted | `eligibility/EligibilityPolicy`, `EligibilityService` | `EligibilityPolicyTest`, `TokenFlowApiTest` (API level) |
-| SEC-11 | Token signature verifies against election key | `token/BlindSigner` | `BlindSignerTest`, `TokenFlowApiTest.issuedTokenVerifies` |
-| SEC-11 | Signer never sees the unblinded serial | `frontend/src/security/blindToken.ts` | `blindToken.test.ts`, `TokenFlowApiTest.serialNeverReachesServer` |
-| SEC-11 | Same serial again returns 409 | `ballot/SpentToken` UNIQUE, `BallotSubmissionService` | `.reusedTokenConflict` |
-| SEC-11 | Two concurrent submissions produce one ballot | UNIQUE constraint plus retry in `BallotSubmissionService` | `.concurrentSubmissionsProduceOneBallot` |
+1. `SecurityConfig` lists each allowed method and path explicitly and ends with `.anyRequest().denyAll()`.
+2. Every controller method must carry `@PreAuthorize`. `EndpointSecurity` denies any mapped method without one, so a forgotten annotation fails closed.
+3. Authenticated calls need a DPoP bound access token. Plain Bearer tokens are refused.
+4. A new endpoint therefore needs both a `@PreAuthorize` and a `SecurityConfig` entry.
 
-## What the application contains, against the brief
+## Running it locally
 
-| Brief requires | Status | Where |
-|---|---|---|
-| Front end GUI | Done for these five requirements | `frontend/` React: enrolment check, candidate list, voting, delegate console |
-| Server side back end | Done | `backend/` Spring Boot |
-| RESTful web services | Done | Endpoints listed below |
-| Database | Done | PostgreSQL 16 via `docker-compose.yml`; JPA entities; tables listed below |
-| Unit tests for core security | Done | 8 backend test classes, 5 frontend test files |
-| Login (identity provider) | **Not here: SEC-01/02 owner** | Without it, the authenticated screens (voting, delegate console) cannot be used in the demo |
-| CI/CD pipeline (optional in brief) | **Not here: SEC-20 owner** | GitHub Actions running these tests |
-| The other 15 requirements | Teammates | Integration points below |
+Requirements: Java 21, Node 20 or later, Docker.
 
-REST endpoints in this code:
+1. Copy `.env.example` to `.env` and fill in the values. `.env` and `*.pem` files are git ignored. Never commit real secrets.
+2. Create the election signing key (SEC-11):
+   `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out election-signing.pem`
+3. Start PostgreSQL: `docker compose up -d` (listens on 127.0.0.1:5432).
+4. Start Keycloak and import `keycloak/evp-realm.json` and `keycloak/evp-staff-realm.json`, following `keycloak/README.md`.
+5. Export the backend settings (Spring Boot does not read `.env` itself), for example:
+   `EVP_DB_PASSWORD`, `EVP_LOOKUP_SECRET`, `EVP_TOKEN_KEY_PATH`, `EVP_ELECTION_DAY`, `EVP_AUDIT_KEY_PATH`, `EVP_AUDIT_PUBLIC_KEY_PATH`, `EVP_RESULTS_KEY_PATH`, `EVP_RESULTS_PUBLIC_KEY_PATH`, `EVP_DATA_KEYS`, `EVP_DATA_ACTIVE`, `EVP_INDEX_KEY`, plus `evp.ballot.keyring-dir` and `evp.ballotbox.key-dir` for the SEC-12 and SEC-14 keys.
+6. Start the backend with the demo profile (port 8080):
+   `cd backend && SPRING_PROFILES_ACTIVE=demo ./mvnw spring-boot:run`
+   The demo profile loads four sample voters, one for each SEC-10 outcome. The enrolment check succeeds for Jane Citizen, 1990-01-01, 3000.
+7. Start the frontend (port 5173, which forwards `/api` to 8080):
+   `cd frontend && npm install && npm run dev`
 
-| Method and path | Who | Requirement |
-|---|---|---|
-| `POST /api/public/enrolment-check` | Anyone | SEC-08 |
-| `GET /api/tokens/public-key` | Anyone | SEC-11 |
-| `POST /api/tokens` | Signed-in voter | SEC-10, SEC-11 |
-| `POST /api/ballots` | Anyone (anonymous by design) | SEC-11 |
-| `GET /api/candidates?division=` | Signed-in user | SEC-05, SEC-07 |
-| `GET /api/change-requests` | Delegate or auditor | SEC-05 |
-| `POST /api/change-requests` | Delegate | SEC-05 |
-| `POST /api/change-requests/{id}/approvals` | Delegate | SEC-05 |
-| `POST /api/change-requests/{id}/rejection` | Delegate | SEC-05 |
+The backend refuses to start if a required secret or key is missing (fail closed).
 
-Database tables (Hibernate creates them on first start):
-
-| Table | Holds | Requirement |
-|---|---|---|
-| `voter` | Electoral roll: lookup key, date of birth, citizen, enrolled, division, has_voted | SEC-08, SEC-10, SEC-11 |
-| `change_request` | Proposed changes and their status | SEC-05 |
-| `change_request_approval` | One row per approval, CHECK approver <> proposer | SEC-05 |
-| `candidate` | Candidates added through approved changes | SEC-05 |
-| `spent_token` | SHA-256 of each used token serial, UNIQUE | SEC-11 |
-| `stored_ballot` | Encrypted ballot envelopes (placeholder until SEC-12/13/14) | SEC-11 |
-
-Note there is no link between `voter` and `spent_token` or `stored_ballot`. That gap is what keeps the ballot secret.
-
-## Running it for the demo
+## Tests
 
 ```
-cp .env.example .env                        # fill in the values, see comments inside
-openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out election-signing.pem
-docker compose up -d                        # PostgreSQL on 127.0.0.1:5432
-
-# export the same values for the backend (Spring Boot does not read .env itself)
-export EVP_DB_PASSWORD=... EVP_LOOKUP_SECRET=... EVP_TOKEN_KEY_PATH=$PWD/election-signing.pem
-export EVP_ELECTION_DAY=2026-05-02 SPRING_PROFILES_ACTIVE=demo
-cd backend && mvn spring-boot:run           # port 8080
-cd frontend && npm run dev                  # port 5173, proxies /api to 8080
+cd backend  && ./mvnw test                     # JUnit and API tests on H2 in PostgreSQL mode
+cd frontend && npm test && npm run lint && npm run build
 ```
 
-The `demo` profile loads four sample voters (`DemoVoterSeeder`): one eligible, one under 18, one in another division and one non-citizen, so every SEC-10 outcome can be shown. The enrolment check succeeds for Jane Citizen, 1990-01-01, 3000. For the signed-in parts, the SEC-01 owner needs Keycloak users with the usernames `voter1`, `teen1`, `wills1` and `visitor1` (role VOTER), plus three delegates (role DELEGATE).
+The test profile (`backend/src/test/resources/application-test.properties`) uses throw away keys, so no secret is needed or committed to run the tests.
 
-The app refuses to start if any secret is missing (fail closed). `.env` and `*.pem` are git-ignored.
+## CI/CD pipeline (SEC-20)
 
-## Things teammates need to know (integration points)
+`.github/workflows/security.yml` runs on every push and pull request to `main`, plus a weekly re-scan: backend tests, frontend tests and build, CodeQL (Java and TypeScript), Semgrep, OSV dependency scan, CycloneDX SBOM and gitleaks over the full history. Dependabot raises update pull requests. Review major version updates by hand rather than merging them automatically.
 
-| Who | What |
-|---|---|
-| Identity and access (SEC-01, 03, 04, 09) | `config/SecurityConfig` is a placeholder. When merging, keep `SecurityHeaders.configure(http)`, the three `permitAll` lines and `@EnableMethodSecurity`. Rate limit the two public endpoints (SEC-09). Front end: call `setAccessTokenProvider` in `src/api/http.ts` from the OIDC module. |
-| Whoever builds registration and address update | Set `Voter.lookupKey` with `EnrolmentLookupKey.compute(name, dob, postcode)`, and recompute it when the name or postcode changes, otherwise SEC-08 says "not found". |
-| Ballot casting and cryptography (SEC-12, 13, 14, 19) | Implement `ballot/BallotSink` and delete `JpaBallotSink`/`StoredBallot`. Pass your encryption function as `buildEncryptedBallot` to `VotingPanel`. Never log request bodies on `/api/ballots`. |
-| Tally, audit and pipeline (SEC-16, 17, 20) | Implement `audit/AuditLogger` (use REQUIRES_NEW) and delete `Slf4jAuditLogger`. The recount should read only `findByTypeAndStatus(RECOUNT_EXCLUSION, APPLIED)`. |
+## Known limitations
 
-## Design decisions and limits (put these in the report)
-
-1. has-voted is set when the token is issued, not when the ballot arrives. A voter who abandons the session cannot get a second token online and would vote on paper.
-2. The token cannot be linked to the voter cryptographically. Timing and network metadata could still correlate issue and submission. SEC-13's IP stripping and hourly timestamps reduce this; production should also delay or separate submission.
-3. A recount exclusion needs two approvers, neither of them the proposer (three delegates in total), plus a court order reference.
-4. The bulk enrolment workflow applies to changes of more than 50 records.
-5. The election signing key is a PEM file here. Production would use an HSM, split between trustees (SEC-15).
-6. Hibernate creates the schema (`ddl-auto=update`). Production would use Flyway migrations.
-7. Tests run on H2 in PostgreSQL mode. The demo and production use PostgreSQL.
+1. SEC-12, SEC-13 and SEC-14 are built and tested as components but not yet wired into ballot submission. Submitted ballots still go to the placeholder `StoredBallot` store, which SEC-15 decryption reads.
+2. Keys are files or environment secrets in this prototype. Production would hold them in an HSM, with the election key split between trustees.
+3. Hibernate creates the schema (`ddl-auto=update`). Production would use versioned migrations.
