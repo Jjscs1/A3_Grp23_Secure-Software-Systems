@@ -35,6 +35,7 @@ public class TokenController {
 
     /** Public: the browser needs the election public key to blind its serial. */
     @GetMapping("/public-key")
+    @PreAuthorize("permitAll()")
     public PublicKeyResponse publicKey() {
         return new PublicKeyResponse(BlindSigner.SUITE, Base64.getEncoder().encodeToString(signer.publicKeySpki()));
     }

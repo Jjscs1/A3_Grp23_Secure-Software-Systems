@@ -295,4 +295,55 @@ class JwtValidationTests {
             .header("DPoP", proof(token, DEVICE_KEY, "GET", "http://localhost:5173/api/me", Instant.now())))
             .andExpect(status().isOk());
     }
+
+    private String elevationToken(Object start, Object end, String role) throws Exception {
+        SignedJWT base = SignedJWT.parse(validToken());
+        Map<String, Object> claims = new java.util.HashMap<>(base.getJWTClaimsSet().toJSONObject());
+        claims.put("realm_access", Map.of("roles", java.util.List.of(role)));
+        // A freshly issued access token must NOT reset an old elevation window.
+        claims.put("iat", Instant.now().getEpochSecond());
+        if (start != null) claims.put("admin_elevated_at", start);
+        if (end != null) claims.put("admin_elevation_expires_at", end);
+        SignedJWT signed = new SignedJWT(base.getHeader(), JWTClaimsSet.parse(claims));
+        signed.sign(new RSASSASigner(TRUSTED_KEY));
+        return signed.serialize();
+    }
+
+    private org.springframework.test.web.servlet.ResultActions adminRequest(String token) throws Exception {
+        return mvc.perform(get("/api/admin/elevation").header("Authorization", "DPoP " + token)
+            .header("DPoP", proof(token, DEVICE_KEY, "GET", "http://localhost/api/admin/elevation", Instant.now())));
+    }
+
+    @Test void validSignedElevationAllowsAdmin() throws Exception {
+        long now = Instant.now().getEpochSecond();
+        adminRequest(elevationToken(now - 60, now + 300, "ADMIN"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.role").value("ADMIN"));
+    }
+
+    @Test void freshlyIssuedTokenWithOldElevationIsRejected() throws Exception {
+        long now = Instant.now().getEpochSecond();
+        adminRequest(elevationToken(now - 14401, now - 1, "ADMIN")).andExpect(status().isForbidden());
+    }
+
+    @Test void standingAdminRoleWithoutElevationIsRejected() throws Exception {
+        adminRequest(elevationToken(null, null, "ADMIN")).andExpect(status().isForbidden());
+    }
+
+    @Test void grantCannotExceedFourHours() throws Exception {
+        long now = Instant.now().getEpochSecond();
+        adminRequest(elevationToken(now - 60, now + 14400, "ADMIN")).andExpect(status().isForbidden());
+    }
+
+    @Test void grantWithoutAdminRoleCannotElevateVoter() throws Exception {
+        long now = Instant.now().getEpochSecond();
+        adminRequest(elevationToken(now - 60, now + 300, "VOTER")).andExpect(status().isForbidden());
+    }
+
+    @Test void expiredAdminIsNotAdvertisedByMe() throws Exception {
+        long now = Instant.now().getEpochSecond();
+        String token = elevationToken(now - 14401, now - 1, "ADMIN");
+        mvc.perform(get("/api/me").header("Authorization", "DPoP " + token)
+            .header("DPoP", proof(token, DEVICE_KEY, "GET", "http://localhost/api/me", Instant.now())))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.roles").isEmpty());
+    }
 }

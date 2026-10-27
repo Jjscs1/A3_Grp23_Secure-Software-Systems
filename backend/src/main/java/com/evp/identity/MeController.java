@@ -1,5 +1,7 @@
 package com.evp.identity;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import java.util.List;
 
 import org.springframework.security.core.GrantedAuthority;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
 
     @GetMapping("/api/me")
+    @PreAuthorize("isAuthenticated()")
     public UserInfo me(
             @AuthenticationPrincipal Jwt jwt,
             Authentication authentication) {

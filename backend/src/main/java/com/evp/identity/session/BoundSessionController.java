@@ -1,5 +1,7 @@
 package com.evp.identity.session;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -18,6 +20,7 @@ public class BoundSessionController {
     public BoundSessionController(BoundSessionService sessions) { this.sessions = sessions; }
     public record StartRequest(@NotBlank @Size(max = 16384) String idToken) {}
     @PostMapping("/start")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> start(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody StartRequest body,
             HttpServletRequest request, HttpServletResponse response) {
         String cookie = sessions.start(jwt, body.idToken(), BoundSessionFilter.cookie(request));
@@ -25,11 +28,13 @@ public class BoundSessionController {
         return ResponseEntity.noContent().build();
     }
     @PostMapping("/activity")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> activity(@AuthenticationPrincipal Jwt jwt, HttpServletRequest request) {
         sessions.activity(jwt, BoundSessionFilter.cookie(request));
         return ResponseEntity.noContent().build();
     }
     @PostMapping("/end")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> end(@AuthenticationPrincipal Jwt jwt, HttpServletRequest request,
             HttpServletResponse response) {
         sessions.end(jwt, BoundSessionFilter.cookie(request));
@@ -37,11 +42,12 @@ public class BoundSessionController {
         return ResponseEntity.noContent().build();
     }
     @GetMapping("/status")
+    @PreAuthorize("isAuthenticated()")
     public java.util.Map<String,Boolean> state(@AuthenticationPrincipal Jwt jwt, HttpServletRequest request) {
         return java.util.Map.of("castReady", sessions.castReady(jwt, BoundSessionFilter.cookie(request)));
     }
     @PostMapping("/prepare-cast")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('VOTER')")
+    @PreAuthorize("hasRole('VOTER')")
     public java.util.Map<String,String> prepare(@AuthenticationPrincipal Jwt jwt, HttpServletRequest request,
             HttpServletResponse response) {
         String nonce = sessions.prepareCast(jwt, BoundSessionFilter.cookie(request));

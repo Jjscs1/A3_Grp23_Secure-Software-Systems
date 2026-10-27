@@ -81,6 +81,7 @@ public class ChangeRequestController {
 
     /** Candidate list for the ballot screen. Any signed-in user. */
     @GetMapping("/candidates")
+    @PreAuthorize("isAuthenticated()")
     public List<CandidateView> candidates(@RequestParam String division) {
         return candidates.findByDivisionOrderByNameAsc(division).stream()
                 .map(c -> new CandidateView(c.getId(), c.getName(), c.getParty()))

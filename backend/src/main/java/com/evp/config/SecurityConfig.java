@@ -1,6 +1,8 @@
 package com.evp.config;
 
 import com.evp.security.SecurityHeaders;
+import com.evp.identity.access.AdminElevation;
+import java.util.Set;
 import com.evp.identity.ratelimit.RequestRateLimiter;
 import com.evp.identity.ratelimit.IpRateLimitFilter;
 import com.evp.identity.ratelimit.AccountRateLimitFilter;
@@ -39,7 +41,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain apiSecurity(HttpSecurity http, BoundSessionService sessions, RequestRateLimiter rateLimiter,
+    public SecurityFilterChain apiSecurity(HttpSecurity http, BoundSessionService sessions, RequestRateLimiter rateLimiter, AdminElevation elevation,
             @Value("${evp.rate-limit.enabled:true}") boolean rateLimitEnabled,
             @Value("${evp.session.enabled:true}") boolean sessionEnabled,
             @Value("${evp.session.origin:http://localhost:5173}") String appOrigin)
@@ -72,8 +74,13 @@ public class SecurityConfig {
                     "/api/ballots"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/me").authenticated()
-                           .requestMatchers("/api/me").denyAll()
-                           .requestMatchers("/api/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/candidates", "/api/change-requests",
+                    "/api/session/status", "/api/admin/elevation").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/tokens", "/api/change-requests",
+                    "/api/change-requests/{id}/approvals", "/api/change-requests/{id}/rejection",
+                    "/api/session/start", "/api/session/activity", "/api/session/end",
+                    "/api/session/prepare-cast").authenticated()
+                // New routes require both a method policy and an explicit method/path entry here.
                 .anyRequest().denyAll())
             .oauth2ResourceServer(oauth -> oauth
                 // Spring Security 6.5 validates DPoP proofs automatically.
@@ -87,7 +94,7 @@ public class SecurityConfig {
                     return null;
                 })
                 .jwt(jwt -> jwt
-                    .jwtAuthenticationConverter(keycloakRoles())));
+                    .jwtAuthenticationConverter(keycloakRoles(elevation))));
 
         if (rateLimitEnabled) {
             // IP budget before authentication/body parsing; account budget only after authentication.
@@ -100,7 +107,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    static JwtAuthenticationConverter keycloakRoles() {
+    public static JwtAuthenticationConverter keycloakRoles(AdminElevation elevation) {
         JwtAuthenticationConverter converter =
             new JwtAuthenticationConverter();
 
@@ -121,10 +128,11 @@ public class SecurityConfig {
             return names.stream()
                 .filter(String.class::isInstance)
                 .map(String.class::cast)
-                .map(role -> (GrantedAuthority)
-                    new SimpleGrantedAuthority(
-                        "ROLE_" + role.toUpperCase(Locale.ROOT)
-                    ))
+                .map(role -> role.toUpperCase(Locale.ROOT))
+                .filter(Set.of("VOTER", "AEC_OFFICER", "DELEGATE", "ADMIN", "AUDITOR")::contains)
+                .filter(role -> !role.equals("ADMIN") || elevation.isActive(jwt))
+                .distinct()
+                .map(role -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + role))
                 .toList();
         });
 
