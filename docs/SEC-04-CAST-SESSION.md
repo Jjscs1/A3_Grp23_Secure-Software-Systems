@@ -1,8 +1,8 @@
 # SEC-04: reauthentication and session closure for voting
 
 This change connects the identity session to blind-token issuance.
-It keeps ballot submission anonymous. It does not port SEC-12 from the
-teammate's separate JavaScript app.
+It keeps ballot submission anonymous. SEC-12 encryption integration is outside
+this change.
 
 ## Flow
 
@@ -88,20 +88,45 @@ Existing business-rule tests keep their session-filter isolation. The dedicated
 session integration suite explicitly enables session enforcement. Keep
  evp.session.enabled=true for the running demo (the default).
 
-## Checks still needed on the user's machine
+## Current acceptance evidence on 27 October 2026
 
-- Run backend tests and frontend tests/build/lint after applying.
-- Restart both services. Sign in as voter1.
-- Choose Verify identity to vote and complete the password prompt.
-- Verify the page reports Identity verified and shows Prepare my ballot.
-- Until SEC-12 is connected, Prepare my ballot must report that it cannot
-  prepare the ballot. It must not send POST /api/tokens in that case.
-- After SEC-12 integration, test the complete preparation and cast flow once.
-  Verify /api/me returns 401 for the issuing session after preparation and cast.
-- Save final Keycloak exports after all requested configuration work is finished.
+The latest full backend run passed 168 tests with no failures, errors or skips.
+The casting frontend change passed 44 tests, build and lint on Windows.
+These totals describe the whole suites, not only SEC-04.
 
-The complete live encrypted voting demonstration is not yet verified. Do not
-close SEC-04 solely because the automated tests passed.
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Access token TTL is ten minutes | Live Keycloak response showed expires_in: 600; exported realm settings retain 600 seconds. Session bootstrap rejects tokens longer than 600 seconds. |
+| Replay without matching DPoP proof returns 401 | JWT/DPoP tests cover missing proof, Bearer replay and the wrong device key. |
+| Hardened cookie attributes | Automated Set-Cookie checks and browser inspection confirm __Host-evp-session, Secure, HttpOnly, SameSite=Strict, Path=/ and no Domain attribute. |
+| Session is invalid after a ballot is cast | successfulIssuanceClosesSessionBeforeAnonymousCast verifies issuance, anonymous ballot submission returning 201, and the issuing session returning 401 afterwards. |
+
+The casting integration test uses real signed tokens, DPoP proofs and a blind
+signature. It verifies that issuance clears the cookie with Max-Age=0, that
+/api/me rejects the old session both before and after anonymous submission,
+and that /api/session/start cannot reopen it. The ballot request carries no
+identity headers or cookie.
+
+The test uses a labelled test envelope. It demonstrates the IAM session
+invariant, not correct ballot encryption or a complete browser voting journey.
+Closing the session at issuance is deliberately earlier than casting, so the
+issuing identity session is already unusable when a ballot is submitted.
+
+Live checks also confirmed the session cookie attributes and the idle-timeout
+message. A new sign-in requested authentication. Choosing Verify identity to
+vote requested authentication again. Server-side idle rejection and challenge
+validation are covered by the integration tests independently of browser timers.
+
+## Remaining integration check
+
+The complete live encrypted-voting demonstration has not been verified.
+The current frontend blocks ballot preparation while SEC-12 encryption is
+not connected; it must not substitute a dummy envelope in the live application.
+
+After the encryption adapter, election public key and preferences UI are
+integrated, test preparation and casting through the browser. Confirm the
+issuing session remains rejected afterwards. This remaining integration check
+must be reported separately from the verified IAM acceptance evidence above.
 
 ## Known prototype limits
 

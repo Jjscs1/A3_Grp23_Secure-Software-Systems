@@ -85,17 +85,17 @@ cookie omission for ballot requests.
 7. Sign in again and check normal sign-out. /api/session/end should return 204.
 
 Do not put access tokens, ID tokens or cookie values into screenshots committed
-to the repository. Results of these live checks have not yet been recorded.
+to the repository. Completed browser observations are recorded below.
 
 ## Limits and the next change
 
 The later [casting-session change](SEC-04-CAST-SESSION.md) adds a separate
 reauthentication step and closes the session atomically at blind-token issuance.
 Read that document for its timing, checks and remaining integration limits.
-SEC-04 must stay open until the remaining live checks are complete.
-The token-issuance flow currently marks a ballot issued before submission.
-The next change must preserve the anonymous token across that controlled flow
-without attaching a voter identity to /api/ballots.
+The token-issuance flow marks a ballot issued before submission. The casting
+change preserves the anonymous token across that controlled flow without
+attaching a voter identity to /api/ballots. The complete live encrypted-voting
+demonstration remains a separate integration check with SEC-12.
 
 The idle policy currently applies to every signed-in user of this prototype,
 not a separate polling-terminal mode. The server sees reported activity, not

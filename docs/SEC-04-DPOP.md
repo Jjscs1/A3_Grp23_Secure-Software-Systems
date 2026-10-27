@@ -71,28 +71,31 @@ Do not commit full token responses or Authorization headers as evidence.
 The existing blind-RSA dependency still produces a browser `crypto` warning
 at build time. A successful build is not a complete voting-flow test.
 
-## Remaining SEC-04 work
+## Later SEC-04 implementation
 
 This section describes the original DPoP-only stage. See [SEC-04-SESSION.md](SEC-04-SESSION.md)
 for the later application-session cookie and idle-timeout implementation.
 
-Tokens are still held in memory by the frontend at this stage. This does not
-implement the required HttpOnly, Secure, SameSite=Strict, __Host- session cookie.
+Access and ID tokens remain in frontend memory. The later session change adds
+a separate HttpOnly, Secure, SameSite=Strict, __Host- cookie containing an opaque
+identifier. The cookie does not contain the tokens.
 
 Cookie-based sessions need server-side session management and CSRF protection.
 They must also preserve the anonymous ballot endpoint: never send identity
 cookies or an identity-bound proof with the ballot body.
 
-Re-authentication before casting, server-enforced session termination after
-casting, and the 90-second polling-terminal idle limit remain to be implemented.
-Do not mark these criteria complete based on this DPoP patch.
+The later session and casting changes implement reauthentication, server-side
+90-second idle expiry, and session closure at blind-token issuance before
+anonymous casting. See SEC-04-SESSION.md and SEC-04-CAST-SESSION.md for evidence
+and the remaining encrypted-voting integration check.
 
 The default proof replay cache is local to a backend process. A multi-instance
 production deployment needs shared replay protection and a reviewed HTTPS/proxy
 configuration. DPoP does not protect against code executing inside the same
 browser origin using the key, and this software key is not a hardware attestation.
 
-Export the final Keycloak configuration after the remaining settings are finished.
+The Keycloak DPoP and 600-second access-token settings were exported and committed
+in 404d41d. Subsequent realm exports retain these settings.
 
 ## References
 
