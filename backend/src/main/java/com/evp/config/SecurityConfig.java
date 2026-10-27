@@ -1,6 +1,10 @@
 package com.evp.config;
 
 import com.evp.security.SecurityHeaders;
+import com.evp.identity.ratelimit.RequestRateLimiter;
+import com.evp.identity.ratelimit.IpRateLimitFilter;
+import com.evp.identity.ratelimit.AccountRateLimitFilter;
+import org.springframework.security.web.authentication.logout.LogoutFilter;
 import com.evp.identity.session.BoundSessionFilter;
 import com.evp.identity.session.BoundSessionService;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,7 +39,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain apiSecurity(HttpSecurity http, BoundSessionService sessions,
+    public SecurityFilterChain apiSecurity(HttpSecurity http, BoundSessionService sessions, RequestRateLimiter rateLimiter,
+            @Value("${evp.rate-limit.enabled:true}") boolean rateLimitEnabled,
             @Value("${evp.session.enabled:true}") boolean sessionEnabled,
             @Value("${evp.session.origin:http://localhost:5173}") String appOrigin)
             throws Exception {
@@ -84,6 +89,11 @@ public class SecurityConfig {
                 .jwt(jwt -> jwt
                     .jwtAuthenticationConverter(keycloakRoles())));
 
+        if (rateLimitEnabled) {
+            // IP budget before authentication/body parsing; account budget only after authentication.
+            http.addFilterBefore(new IpRateLimitFilter(rateLimiter), LogoutFilter.class);
+            http.addFilterBefore(new AccountRateLimitFilter(rateLimiter), AuthorizationFilter.class);
+        }
         if (sessionEnabled) {
             http.addFilterBefore(new BoundSessionFilter(sessions, appOrigin), AuthorizationFilter.class);
         }
@@ -134,6 +144,7 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(
             List.of("Authorization", "DPoP", "Content-Type")
         );
+        configuration.setExposedHeaders(List.of("Retry-After"));
         configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source =
