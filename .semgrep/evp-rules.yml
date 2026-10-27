@@ -1,0 +1,16 @@
+# SEC-20: the team's own Semgrep rules, run by .github/workflows/security.yml.
+# evp-symmetric-cipher-ecb replaces Semgrep's generic ecb-cipher rule, which also flags
+# "RSA/ECB/..." (in Java that is plain single-block RSA, not ECB). This rule still
+# catches the real problem: AES/DES/... in ECB mode, or with no mode (defaults to ECB).
+rules:
+  - id: evp-symmetric-cipher-ecb
+    languages: [java]
+    severity: ERROR
+    message: >-
+      Symmetric cipher in ECB mode, or with no mode (which defaults to ECB). ECB leaks
+      patterns and has no integrity check. Use "AES/GCM/NoPadding" instead.
+    patterns:
+      - pattern: javax.crypto.Cipher.getInstance("$TRANSFORM")
+      - metavariable-regex:
+          metavariable: $TRANSFORM
+          regex: (?i)^(AES|DES|DESede|Blowfish|RC2|RC4)(/ECB/.*)?$

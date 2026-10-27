@@ -1,0 +1,10 @@
+# SEC-20: accepted dependency risks (read by .github/scripts/osv_scan.py).
+#
+# One advisory per line:   ADVISORY-ID  review-by=YYYY-MM-DD  reason
+#
+# Only add an entry when there is NO fixed version we can use yet AND the reason says why
+# the risk is acceptable. After the review-by date the scan blocks again, so nothing is
+# accepted forever. Changes to this file need a code-owner review (CODEOWNERS).
+
+GHSA-j9f9-w8pj-32f8 review-by=2026-12-31 Spring MVC Server-Sent Event fragment rendering. The app has no SSE endpoints. Fixed only in Spring Framework 7 (Spring Boot 4).
+GHSA-pc63-qcmh-9cmg review-by=2026-12-31 Spring MVC XsltView path limitation. The app renders no XSLT views (JSON API only). Fixed only in Spring Framework 7 (Spring Boot 4).

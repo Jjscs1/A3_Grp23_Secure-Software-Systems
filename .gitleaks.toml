@@ -1,0 +1,8 @@
+# SEC-20: gitleaks configuration. All of gitleaks' built-in secret rules are used.
+# Real keys are never committed: *.pem, *.key and .env are git-ignored and the app
+# reads keys from paths in environment variables. Reviewed false positives are listed,
+# one exact fingerprint each, in .gitleaksignore.
+title = "EVP Group 23 gitleaks config"
+
+[extend]
+useDefault = true

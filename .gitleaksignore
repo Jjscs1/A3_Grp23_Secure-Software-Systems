@@ -1,0 +1,6 @@
+# SEC-20: gitleaks findings reviewed and confirmed NOT to be secrets. One fingerprint per line.
+# Fingerprints pin the exact commit, file, rule and line, so a real key added later is still caught.
+# PemKeys.java holds the PEM header text "-----BEGIN PRIVATE KEY-----" as a constant used to PARSE key files; there is no key in it.
+237a5f44aa8e52dbfa27cfb07aa0f4fc8f03232e:backend/src/main/java/com/evp/token/PemKeys.java:private-key:27
+# keycloak/README.md shows the documentation example "Authorization: Bearer invalid-token" (a placeholder that must be refused with 401), not a real token.
+1ce1e0ac89a95bce603d43d6b3c7c846327102da:keycloak/README.md:curl-auth-header:233

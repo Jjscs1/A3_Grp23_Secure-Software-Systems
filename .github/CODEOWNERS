@@ -1,0 +1,10 @@
+# SEC-20 - who must review changes to each part of the repo.
+# Every rule lists at least two people, so nobody is the only possible reviewer of
+# their own change.
+*                                @Jjscs1 @khaled20100 @PJstorm-blip @Arvind9750
+
+# The security pipeline itself: changing these could switch the checks off.
+/.github/                        @Arvind9750 @Jjscs1
+/.semgrep/                       @Arvind9750 @Jjscs1
+/.gitleaks.toml                  @Arvind9750 @Jjscs1
+/.gitleaksignore                 @Arvind9750 @Jjscs1
