@@ -53,56 +53,76 @@ create or extend one. There are no other administrative business operations
 in this implementation yet. Future admin endpoints must require ROLE_ADMIN.
 `/api/me` reports effective authorities, so expired ADMIN is not advertised.
 
-## Required Keycloak setup (live setup still pending)
+## Keycloak configuration
 
-Applying this code does not configure the running Keycloak server. Until the
-following setup is completed, an ADMIN account can sign in but has no active
-ADMIN privilege. Do not mark the live elevation test as completed yet.
+The live setup below was completed in the issuing `evp` realm on
+27 October 2026. The updated configuration was exported to
+`keycloak/evp-realm.json`.
 
-In the issuing `evp` realm:
+The managed User Profile defines two optional, single-valued attributes:
 
-1. Define the two attributes above in the managed User Profile. They are
-   single-valued and optional. Set view/edit permissions to **admin only**,
-   not user. Do not enable user editing of unmanaged attributes.
-2. On the `evp-frontend` dedicated client scope, create one User Attribute
-   protocol mapper for each attribute. Use the same attribute and claim names,
-   JSON type `long`, Add to access token on, multivalued off. Do not use a
-   mapper that calculates the current time on each token issue.
-3. Keep the grant on the linked local `evp` user, where access tokens are
-   issued. Do not import these attributes from an untrusted external profile
-   or accept them from frontend input. Do not give application ADMIN users
-   Keycloak realm-management permissions or permission to edit their grant.
-4. An authorised Keycloak operator records the approved start and fixed expiry
-   on the selected eligible account. Use a short grant for the demo; never
-   pre-populate permanent grants or future default timestamps in exports.
-5. Sign in again to obtain a signed token containing the grant. The grant
-   does not replace staff WebAuthn or the application's DPoP/session checks.
-6. Record who approved the grant and why using the team's administrative
-   process. Enabling Keycloak admin events can retain operator actions.
-   This patch does not implement an approval UI or an independent approval service.
+- `admin_elevated_at`
+- `admin_elevation_expires_at`
 
-For a short demo window, the operator can calculate values in PowerShell:
+Both attributes have admin-only view and edit permissions. They have no
+default grant values. Application users cannot edit these managed attributes.
+
+The `evp-frontend` dedicated client scope contains two User Attribute mappers:
+
+| Mapper | User attribute and token claim | JSON type |
+| --- | --- | --- |
+| admin-elevation-start | admin_elevated_at | long |
+| admin-elevation-expiry | admin_elevation_expires_at | long |
+
+Both mappers add the claim to the access token only. ID token, UserInfo,
+introspection and lightweight-token inclusion are disabled. Multivalued
+mapping is disabled. Neither mapper calculates a new timestamp when a token
+is issued.
+
+The grant belongs on the linked local `evp` user, where application access
+tokens are issued. Do not import these attributes from an untrusted external
+profile or accept them from frontend input. Do not give application ADMIN
+users Keycloak realm-management permissions or permission to edit their grant.
+
+## Grant operation
+
+An authorised Keycloak operator records the approved start and fixed expiry
+on the selected eligible account. Use a short grant for the demo; never
+pre-populate permanent grants or future default timestamps in exports.
+
+For a ten-minute demo window, the operator can calculate values in PowerShell:
 
 ```powershell
 $grantStart = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-$grantEnd = $grantStart + 120
+$grantEnd = $grantStart + 600
 Write-Host "admin_elevated_at=$grantStart"
 Write-Host "admin_elevation_expires_at=$grantEnd"
 ```
 
-Use those fixed values only on the intended demo account after approval.
-Refresh does not update them. To approve another window, the operator must
-make a new explicit decision. The database/session layer is not a grant issuer.
+This command only calculates values. The operator must enter and save them
+on the intended local `evp` account. The user then signs in again to obtain
+a signed token containing the grant. The grant does not replace staff WebAuthn
+or the application's DPoP/session checks.
+
+Refresh does not update the fixed values. To approve another window, the
+operator must make a new explicit decision. The database/session layer is
+not a grant issuer.
+
+Record who approved the grant and why using the team's administrative
+process. Enabling Keycloak admin events can retain operator actions.
+This implementation does not provide an approval UI or an independent
+approval service.
 
 Removing attributes/roles affects subsequently issued tokens. Already issued
 signed tokens can retain their grant until the earlier of grant expiry or
-access-token expiry; this patch does not add immediate grant revocation.
+access-token expiry; this implementation does not add immediate grant revocation.
 The Keycloak infrastructure operator remains a separate trusted configuration
 administrator; this policy time-boxes application ADMIN, not the master realm.
 
-After configuration, export the realm configuration again. User attributes,
-links, passwords and WebAuthn credentials need separate local provisioning;
-configuration-only export is not proof that another installation has those users.
+The export preserves the User Profile definitions and protocol mappers.
+User-specific attribute values, account links, passwords and WebAuthn
+credentials need separate local provisioning. A configuration-only export
+does not recreate the tested users or their credentials.
 
 ## Automated checks
 
@@ -122,8 +142,33 @@ New coverage includes:
 
 The role matrix uses mocked authentication to isolate authorisation rules.
 The added JwtValidationTests exercise the real signature/DPoP/converter path.
-This is backend evidence, not a claim that the live Keycloak mapper and demo
-have already been configured or tested. Repeat `mvnw.cmd test` on the applied patch.
+The full backend suite also passed on the applied patch in the Windows
+development environment.
+
+## Manual elevation checks on 27 October 2026
+
+We tested `admin-test`, which has the ADMIN realm role in `evp` and signs in
+through the linked staff account. We inspected the application's `/api/me`
+response after a fresh sign-in for each case.
+
+| Case | Grant values | Observed effective roles |
+| --- | --- | --- |
+| No grant | Both attributes empty | `[]` |
+| Active ten-minute grant | Start 1793070345, expiry 1793070945 | `["ADMIN"]` |
+| Expired four-hour grant | Start 1793056245, expiry 1793070645 | `[]` |
+
+The expired grant was deliberately backdated. Its expiry was 14,400 seconds
+after its start and was already in the past when tested. Signing in again
+did not restore ADMIN from that expired grant.
+
+These checks confirm that the live attribute mappers and backend role
+conversion produced the expected effective roles for the tested account.
+They did not involve waiting four hours or directly testing an HTTP 403
+response from `/api/admin/elevation` in the browser. Endpoint rejection and
+the exact four-hour boundary are covered by the automated tests.
+
+After the checks, both grant values were cleared and saved on `admin-test`.
+The updated `evp` realm configuration was then exported.
 
 ## References
 
