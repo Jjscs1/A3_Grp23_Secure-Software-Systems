@@ -1,7 +1,8 @@
 # SEC-09: API rate limits without account lockout
 
-This is the backend part of SEC-09. Keycloak login endpoints still need
-separate rate limiting. Do not mark the whole requirement complete yet.
+This is the backend part of SEC-09. Keycloak login endpoints are protected
+by the separate gateway described in SEC-09-KEYCLOAK-GATEWAY.md. Both layers
+were deployed and checked locally on 27 October 2026.
 
 ## Behaviour
 
@@ -116,20 +117,25 @@ Retry-After value. Wait 60 seconds and send one more enrolment check: it
 should return 200 again. The test uses a dummy identity and does not modify
 the electoral roll. Record the actual results before claiming a manual pass.
 
-## Remaining SEC-09 work
+## Login protection and scope
 
-- Protect Keycloak browser authentication and token endpoints in both realms
-  with HTTP 429 and Retry-After, without account lockout.
-- Verify Keycloak's current lockout settings separately. This patch neither
-  enables nor disables Keycloak brute-force protection.
-- Agree the account-budget semantics for unauthenticated login/public lookup
-  without enabling an attacker to exhaust a victim's account budget by name.
-- Finish the manual acceptance check and deployment/proxy review.
+The deployed Keycloak gateway supplies HTTP 429 and Retry-After for public
+login routes. The live Admin Console showed Brute Force Mode Disabled in
+both evp and evp-staff. The API limiter does not modify account state.
 
-`/api/session/start` is application session setup after OIDC authentication;
-it is not the Keycloak password login endpoint. Protecting it alone does not
-complete login rate limiting. Do not replace the outstanding work with
-Keycloak account lockouts.
+Unauthenticated login uses a submitted-username-plus-IP budget, not a global
+username-only budget. Authenticated API account limits use verified issuer
+and subject across IPs. Public enrolment and anonymous ballots use IP and
+endpoint budgets without associating a ballot with a voter account.
+
+These are explicit account-budget semantics. A requirement for a global
+per-account login limit across IPs would need a separate design decision;
+this implementation does not claim that behaviour.
+
+The manual enrolment threshold and recovery check is recorded below. The
+production proxy, shared-counter and capacity limitations above still apply.
+/api/session/start is application session setup after OIDC authentication;
+the gateway separately protects the Keycloak login routes.
 
 References:
 - https://www.rfc-editor.org/rfc/rfc6585.html#section-4

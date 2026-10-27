@@ -6,16 +6,17 @@ second login system. Keycloak still validates passwords, WebAuthn and OIDC.
 
 ## Status and scope
 
-The policy has 12 pure-Lua checks and 8 access-adapter checks. They passed
-in the preparation environment using an embedded Lua runtime and a SHA-256
-adapter. This environment has no Docker daemon. The actual pinned OpenResty
-image, NGINX configuration and PowerShell migration still need to be checked
-on the Windows machine before changing the running service.
+The policy has 12 pure-Lua checks and 8 access-adapter checks. All 20
+passed on Windows using the pinned OpenResty image, and the NGINX
+configuration check passed. The gateway migration then completed successfully.
 
-`Test-Gateway.ps1` runs the same 20 checks using the real OpenResty libraries,
-then runs the NGINX configuration check. No running Keycloak container is
-changed by this test script. A test pass does not prove live OIDC/broker login;
-those checks must follow deployment.
+Live voter login, staff passkey login, discovery, IP throttling and automatic
+recovery were checked. The actual observations and their scope are recorded
+at the end of this document.
+
+Test-Gateway.ps1 checks policy behaviour and configuration without changing
+running containers. Automated coverage does not imply that every limit or
+login route was manually tested.
 
 ## Limits
 
