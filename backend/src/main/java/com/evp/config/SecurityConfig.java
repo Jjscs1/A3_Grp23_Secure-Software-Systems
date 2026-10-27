@@ -88,10 +88,8 @@ public class SecurityConfig {
                     "/api/tally/{id}/recount").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/audit/export", "/api/audit/verify").authenticated()
                 .requestMatchers(HttpMethod.GET,"/api/election/key", "/api/ballotbox/**").permitAll()
-                                .requestMatchers(HttpMethod.GET,"/api/election/key", "/api/ballotbox/**").permitAll()
                   .requestMatchers(HttpMethod.POST, "/api/results/{electionId}/publish").authenticated()
                   // New routes require both a method policy and an explicit method/path entry here.
-                // New routes require both a method policy and an explicit method/path entry here.
                 .anyRequest().denyAll())
             .oauth2ResourceServer(oauth -> oauth
                 // Spring Security 6.5 validates DPoP proofs automatically.

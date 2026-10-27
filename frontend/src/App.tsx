@@ -9,6 +9,7 @@ import {
 } from './components/CandidateList'
 import { ChangeRequestPanel } from './components/ChangeRequestPanel'
 import { EnrolmentCheckForm } from './components/EnrolmentCheckForm'
+import { ResultsPanel } from './components/ResultsPanel'
 import { VotingPanel, type AnonymousBallot } from './components/VotingPanel'
 import { AnonymousCastPanel } from './components/AnonymousCastPanel'
 
@@ -283,6 +284,7 @@ export function App() {
       {receipt && <p role="status">{receipt}</p>}
       {anonymousBallot && <AnonymousCastPanel ballot={anonymousBallot} finish={finishCast} />}
       <EnrolmentCheckForm />
+        <ResultsPanel electionId={1} />
 
       {accessToken && readyToken === accessToken && (
         <SignedInPanels key={accessToken} castReady={castReady} reauthenticate={reauthenticateForVote} onReady={receiveAnonymousBallot} />

@@ -1,0 +1,51 @@
+{
+  "publicKeyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAmpaJgr0m9QnH8PBYSZUOEXCD+RZvCnx5h1ycN39njD0=\n-----END PUBLIC KEY-----\n",
+  "v1" : {
+    "signature" : "Wpnym9pIDQZEQqcjKhDrI+DvvR7cl5Xt+4/dz1dOtxdHc2L39Q1cBCWAgX+3hpaqVG6UR6gyD/LGZNZ6mT8aCw==",
+    "payload" : {
+      "schema" : "evp.results.v1",
+      "electionId" : 1,
+      "sequence" : 1,
+      "issuedAt" : "2026-05-02T11:00:00Z",
+      "keyId" : "58e52dad4fdd71b1",
+      "results" : [ {
+        "tallyId" : 7,
+        "contest" : "house",
+        "region" : "MELBOURNE",
+        "elected" : [ {
+          "id" : 1,
+          "name" : "NGUYEN, Ava"
+        } ],
+        "documentSha256" : "abababababababababababababababababababababababababababababababab"
+      } ],
+      "auditHead" : {
+        "seq" : 42,
+        "hash" : "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+      }
+    }
+  },
+  "v2" : {
+    "signature" : "1nt0Vyp2c2Rcskj2/BMuxuYWdV8e2bkEpLbNVQnMZOhtbymmPZzSF1PHsM84oJR64FP/E+4Tow4gwhXl3sPBAQ==",
+    "payload" : {
+      "schema" : "evp.results.v1",
+      "electionId" : 1,
+      "sequence" : 2,
+      "issuedAt" : "2026-05-02T12:00:00Z",
+      "keyId" : "58e52dad4fdd71b1",
+      "results" : [ {
+        "tallyId" : 7,
+        "contest" : "house",
+        "region" : "MELBOURNE",
+        "elected" : [ {
+          "id" : 2,
+          "name" : "SINGH, Maya – O'Brien"
+        } ],
+        "documentSha256" : "abababababababababababababababababababababababababababababababab"
+      } ],
+      "auditHead" : {
+        "seq" : 42,
+        "hash" : "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+      }
+    }
+  }
+}
